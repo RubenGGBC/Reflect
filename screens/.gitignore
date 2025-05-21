@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+venv/
+ENV/
+
+# IDE específico
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/datasources.xml
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/shelf/
+.idea/httpRequests/
+*.iws
+.idea_modules/
+out/
+
+# Kivy
+.buildozer/
+bin/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
