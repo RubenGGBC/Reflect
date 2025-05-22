@@ -1,14 +1,10 @@
 from kivymd.app import MDApp
-from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager
 from kivy.core.window import Window
 
 # Ajustar tamaño de ventana para pruebas de escritorio
 Window.size = (375, 667)  # Tamaño aproximado de un smartphone
 
-# Importar pantallas
-from screens.entry_screen import EntryScreen
-from screens.login_screen import LoginScreen
 class ReflectApp(MDApp):
     def build(self):
         # Configurar tema
@@ -18,6 +14,10 @@ class ReflectApp(MDApp):
 
         # Crear administrador de pantallas
         self.sm = ScreenManager()
+
+        # Importar pantallas aquí para evitar importaciones circulares
+        from screens.login_screen import LoginScreen
+        from screens.entry_screen import EntryScreen
 
         # Añadir pantallas
         self.sm.add_widget(LoginScreen(name="login"))
