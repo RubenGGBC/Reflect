@@ -1,6 +1,9 @@
 import flet as ft
 from services.ai_service import analyze_tag, get_daily_summary
-from screens.add_tag import TagDialog, DynamicTag
+from screens.new_tag_screen import NewTagScreen, SimpleTag
+
+# Asegurar que DynamicTag esté definido
+
 class ZenColors:
     """Colores zen específicos"""
     # Positivos
@@ -8,10 +11,10 @@ class ZenColors:
     positive_glow = "#A8EDEA"
     positive_main = "#48BB78"
 
-    # Crecimiento
-    growth_light = "#FFF3E0"
-    growth_glow = "#FFECD2"
-    growth_main = "#ED8936"
+    # Negativos (antes growth)
+    negative_light = "#FEE2E2"
+    negative_glow = "#FECACA"
+    negative_main = "#EF4444"
 
     # Base
     background = "#F8FAFC"
@@ -21,12 +24,22 @@ class ZenColors:
     text_hint = "#A0AEC0"
 
 class DynamicTag:
-    def __init__(self, name, context, tag_type, ai_feedback=""):
+    def __init__(self, name, context, tag_type, ai_feedback="", emoji=None):
         self.name = name
         self.context = context
-        self.type = tag_type  # "positive" o "growth"
+        self.type = tag_type  # "positive" o "negative"
         self.ai_feedback = ai_feedback
-        self.emoji = "✨" if tag_type == "positive" else "🌱"
+        self.emoji = emoji or ("+" if tag_type == "positive" else "-")
+
+    @classmethod
+    def from_simple_tag(cls, simple_tag):
+        """Crear DynamicTag desde SimpleTag"""
+        return cls(
+            name=simple_tag.name,
+            context=simple_tag.reason,
+            tag_type=simple_tag.category,
+            emoji=simple_tag.emoji
+        )
 
 class EntryScreen:
     def __init__(self, app):
@@ -37,25 +50,82 @@ class EntryScreen:
         # Campos principales
         self.reflection_field = None
         self.positive_tags = []
-        self.growth_tags = []
+        self.negative_tags = []  # Cambio de growth_tags
         self.worth_it = None  # True, False, o None
 
         # Contenedores para tags
         self.positive_tags_container = None
-        self.growth_tags_container = None
+        self.negative_tags_container = None  # Cambio de growth_tags_container
         self.worth_it_buttons = {"yes": None, "no": None}
 
     def set_user(self, user_data):
-        """Establecer usuario"""
+        """Establecer usuario y cargar datos del día"""
         self.current_user = user_data
+        self.load_today_tags()
+
+    def load_today_tags(self):
+        """Cargar tags del día actual desde la base de datos"""
+        if not self.current_user:
+            return
+
+        try:
+            from services import db
+            # Obtener entradas de hoy
+            entries_today = db.get_user_entries(
+                user_id=self.current_user['id'],
+                limit=10,  # Entradas recientes
+                offset=0
+            )
+
+            # Limpiar listas actuales
+            self.positive_tags.clear()
+            self.negative_tags.clear()
+
+            # Procesar entradas de hoy
+            from datetime import date
+            today = date.today().isoformat()
+
+            for entry in entries_today:
+                if entry.get('entry_date') == today:
+                    # Cargar tags positivos
+                    for tag_data in entry.get('positive_tags', []):
+                        tag = DynamicTag(
+                            name=tag_data.get('name', ''),
+                            context=tag_data.get('context', ''),
+                            tag_type="positive",
+                            emoji=tag_data.get('emoji', '+')
+                        )
+                        self.positive_tags.append(tag)
+
+                    # Cargar tags negativos
+                    for tag_data in entry.get('negative_tags', []):
+                        tag = DynamicTag(
+                            name=tag_data.get('name', ''),
+                            context=tag_data.get('context', ''),
+                            tag_type="negative",
+                            emoji=tag_data.get('emoji', '-')
+                        )
+                        self.negative_tags.append(tag)
+
+                    # Solo procesamos la primera entrada de hoy
+                    break
+
+            print(f"Cargados {len(self.positive_tags)} tags positivos y {len(self.negative_tags)} tags negativos")
+
+        except Exception as ex:
+            print(f"Error cargando tags del día: {ex}")
 
     def build(self):
         """Construir vista principal zen"""
+        # Cargar tags del día al construir la vista
+        self.load_today_tags()
+
+        # Resto del código de build() igual...
 
         # Campo de reflexión libre zen
         self.reflection_field = ft.TextField(
-            label="¿Cómo te ha ido el día?",
-            hint_text="Cuéntame sobre tu día... Tómate tu tiempo para reflexionar 🌸",
+            label="Como te ha ido el dia?",
+            hint_text="Cuentame sobre tu dia... Tomate tu tiempo para reflexionar",
             multiline=True,
             min_lines=4,
             max_lines=8,
@@ -70,11 +140,11 @@ class EntryScreen:
 
         # Contenedores para tags dinámicos
         self.positive_tags_container = ft.Column(spacing=8)
-        self.growth_tags_container = ft.Column(spacing=8)
+        self.negative_tags_container = ft.Column(spacing=8)  # Cambio
 
         # Botones para "¿Mereció la pena?"
         self.worth_it_buttons["yes"] = ft.ElevatedButton(
-            "👍 SÍ",
+            "SI",
             on_click=lambda e: self.set_worth_it(True, e),
             style=ft.ButtonStyle(
                 bgcolor="#F1F5F9",
@@ -87,7 +157,7 @@ class EntryScreen:
         )
 
         self.worth_it_buttons["no"] = ft.ElevatedButton(
-            "👎 NO",
+            "NO",
             on_click=lambda e: self.set_worth_it(False, e),
             style=ft.ButtonStyle(
                 bgcolor="#F1F5F9",
@@ -120,7 +190,12 @@ class EntryScreen:
                                 expand=True,
                                 text_align=ft.TextAlign.CENTER
                             ),
-                            ft.Container(width=60)
+                            ft.TextButton(
+                                "📅",
+                                on_click=self.go_to_calendar,
+                                style=ft.ButtonStyle(color="#FFFFFF"),
+                                tooltip="Ver calendario"
+                            )
                         ]
                     ),
                     padding=ft.padding.all(20),
@@ -141,7 +216,7 @@ class EntryScreen:
                                 content=ft.Column(
                                     [
                                         ft.Text(
-                                            "✍️ Reflexión Libre",
+                                            "Reflexion Libre",
                                             size=20,
                                             weight=ft.FontWeight.W_500,
                                             color=ZenColors.text_primary
@@ -165,15 +240,15 @@ class EntryScreen:
                                         ft.Row(
                                             [
                                                 ft.Text(
-                                                    "✨ MOMENTOS POSITIVOS",
+                                                    "+ MOMENTOS POSITIVOS",
                                                     size=18,
                                                     weight=ft.FontWeight.W_600,
                                                     color=ZenColors.positive_main,
                                                     expand=True
                                                 ),
                                                 ft.TextButton(
-                                                    content=ft.Text("＋", size=20, color=ZenColors.positive_main),
-                                                    on_click=lambda e: self.open_add_tag_dialog(e),
+                                                    content=ft.Text("+", size=20, color=ZenColors.positive_main, weight=ft.FontWeight.BOLD),
+                                                    on_click=self.open_positive_tag_dialog,  # Cambiado
                                                     style=ft.ButtonStyle(
                                                         bgcolor=ZenColors.positive_light,
                                                         shape=ft.CircleBorder(),
@@ -194,24 +269,24 @@ class EntryScreen:
 
                             ft.Container(height=16),
 
-                            # Sección ÁREAS DE CRECIMIENTO
+                            # Sección MOMENTOS NEGATIVOS (antes growth)
                             ft.Container(
                                 content=ft.Column(
                                     [
                                         ft.Row(
                                             [
                                                 ft.Text(
-                                                    "🌱 ÁREAS DE CRECIMIENTO",
+                                                    "- MOMENTOS NEGATIVOS",  # Cambiado
                                                     size=18,
                                                     weight=ft.FontWeight.W_600,
-                                                    color=ZenColors.growth_main,
+                                                    color=ZenColors.negative_main,  # Cambiado
                                                     expand=True
                                                 ),
                                                 ft.TextButton(
-                                                    content=ft.Text("＋", size=20, color=ZenColors.growth_main),
-                                                    on_click=lambda e: self.open_add_tag_dialog("growth"),
+                                                    content=ft.Text("+", size=20, color=ZenColors.negative_main, weight=ft.FontWeight.BOLD),
+                                                    on_click=self.open_negative_tag_dialog,  # Cambiado
                                                     style=ft.ButtonStyle(
-                                                        bgcolor=ZenColors.growth_light,
+                                                        bgcolor=ZenColors.negative_light,  # Cambiado
                                                         shape=ft.CircleBorder(),
                                                         padding=ft.padding.all(8)
                                                     )
@@ -219,13 +294,13 @@ class EntryScreen:
                                             ]
                                         ),
                                         ft.Container(height=12),
-                                        self.growth_tags_container
+                                        self.negative_tags_container  # Cambiado
                                     ]
                                 ),
                                 padding=ft.padding.all(20),
-                                bgcolor=ZenColors.growth_light,
+                                bgcolor=ZenColors.negative_light,  # Cambiado
                                 border_radius=16,
-                                border=ft.border.all(1, ZenColors.growth_glow)
+                                border=ft.border.all(1, ZenColors.negative_glow)  # Cambiado
                             ),
 
                             ft.Container(height=24),
@@ -235,7 +310,7 @@ class EntryScreen:
                                 content=ft.Column(
                                     [
                                         ft.Text(
-                                            "🤔 ¿Ha merecido la pena tu día?",
+                                            "¿Ha merecido la pena tu dia?",
                                             size=18,
                                             weight=ft.FontWeight.W_500,
                                             color=ZenColors.text_primary,
@@ -264,7 +339,7 @@ class EntryScreen:
                             ft.Row(
                                 [
                                     ft.ElevatedButton(
-                                        "💾 Guardar",
+                                        "Guardar",
                                         on_click=self.save_entry,
                                         style=ft.ButtonStyle(
                                             bgcolor="#48BB78",
@@ -279,7 +354,7 @@ class EntryScreen:
                                     ),
                                     ft.Container(width=16),
                                     ft.ElevatedButton(
-                                        "🤖 Chat IA",
+                                        "Chat IA",
                                         on_click=self.chat_ai,
                                         style=ft.ButtonStyle(
                                             bgcolor="#667EEA",
@@ -309,241 +384,190 @@ class EntryScreen:
             bgcolor=ZenColors.background
         )
 
+        # Refrescar tags después de crear la vista
+        self.refresh_positive_tags()
+        self.refresh_negative_tags()
+
         return view
 
-    def add_tag_dialog(self, tag_type, e=None):
-        """Mostrar diálogo para crear tag dinámico"""
-        print(f"🔍 add_tag_dialog llamado con tag_type: {tag_type}")
-        print(f"🔍 Evento e: {e}")
-        print(f"🔍 Tiene page?: {hasattr(e, 'page') if e else 'e es None'}")
+    def on_tag_created(self, simple_tag):
+        """Callback cuando se crea un tag desde NewTagScreen"""
+        print(f"Recibido tag: {simple_tag.emoji} {simple_tag.name} ({simple_tag.category})")
 
-        # Obtener page del evento
-        if not e or not hasattr(e, 'page'):
-            print("❌ Error: No se puede acceder al page del evento")
-            return
+        # Convertir SimpleTag a DynamicTag
+        tag = DynamicTag.from_simple_tag(simple_tag)
 
-        print(f"🔍 Page obtenido: {e.page}")
-        self.page = e.page
+        # Añadir a la lista correspondiente
+        if tag.type == "positive":
+            self.positive_tags.append(tag)
+            print(f"Añadido a positive_tags. Total: {len(self.positive_tags)}")
+        elif tag.type == "negative":
+            self.negative_tags.append(tag)
+            print(f"Añadido a negative_tags. Total: {len(self.negative_tags)}")
 
-        # Campos del diálogo
-        name_field = ft.TextField(
-            label="Nombre del tag",
-            hint_text="Ej: Trabajo, Familia, Ejercicio...",
-            border_radius=12,
-            autofocus=True
-        )
+        # Forzar actualización de la interfaz
+        self.force_refresh_tags()
 
-        context_field = ft.TextField(
-            label="¿Qué pasó exactamente?",
-            hint_text="Describe la situación específica...",
-            multiline=True,
-            min_lines=3,
-            max_lines=5,
-            border_radius=12
-        )
+        # Mostrar mensaje de éxito
+        self.show_success(f"Momento {tag.type} '{tag.name}' anadido")
 
-        # Colores según tipo
-        colors = {
-            "positive": {"bg": ZenColors.positive_light, "main": ZenColors.positive_main, "title": "✨ Nuevo Momento Positivo"},
-            "growth": {"bg": ZenColors.growth_light, "main": ZenColors.growth_main, "title": "🌱 Nueva Área de Crecimiento"}
-        }
+    def force_refresh_tags(self):
+        """Forzar actualización visual de todos los tags"""
+        print("Forzando actualización de tags...")
+        self.refresh_positive_tags()
+        self.refresh_negative_tags()
 
-        color_scheme = colors[tag_type]
-
-        def create_tag(e):
-            if not name_field.value or not context_field.value:
-                self.show_error("Completa todos los campos")
-                return
-
-            # Crear tag dinámico
-            tag = DynamicTag(
-                name=name_field.value.strip(),
-                context=context_field.value.strip(),
-                tag_type=tag_type
-            )
-
-            # Añadir a la lista correspondiente
-            if tag_type == "positive":
-                self.positive_tags.append(tag)
-                self.refresh_positive_tags()
-            else:
-                self.growth_tags.append(tag)
-                self.refresh_growth_tags()
-
-            # Cerrar diálogo
-            self.page.dialog.open = False
+        # Si tenemos página, forzar actualización completa
+        if hasattr(self, 'page') and self.page:
             self.page.update()
+            print("Página actualizada")
 
-            # Mostrar éxito zen
-            self.show_success(f"Tag {tag.emoji} añadido")
+    def create_test_tag_with_page(self, tag_type, e):
+        """Crear tag de prueba con acceso a página"""
+        self.page = e.page
+        self.create_test_tag(tag_type)
 
-        def ask_ai(e):
-            if not name_field.value or not context_field.value:
-                self.show_error("Completa los campos para obtener consejo")
-                return
+    def create_test_tag(self, tag_type="positive"):
+        """Crear tag de prueba para testing"""
+        print(f"Creando tag de prueba: {tag_type}")
 
-            # Generar consejo de IA
-            try:
-                advice = analyze_tag(name_field.value, context_field.value, tag_type)
-                self.show_ai_advice_dialog(advice, tag_type)
-            except Exception as ex:
-                print(f"Error en IA: {ex}")
-                self.show_error("Error obteniendo consejo")
+        if tag_type == "positive":
+            test_tag = DynamicTag(
+                name="Prueba Positiva",
+                context="Esto es una prueba de momento positivo",
+                tag_type="positive",
+                emoji="😊"
+            )
+            self.positive_tags.append(test_tag)
+            print(f"Tags positivos totales: {len(self.positive_tags)}")
+        else:
+            test_tag = DynamicTag(
+                name="Prueba Negativa",
+                context="Esto es una prueba de momento negativo",
+                tag_type="negative",
+                emoji="😔"
+            )
+            self.negative_tags.append(test_tag)
+            print(f"Tags negativos totales: {len(self.negative_tags)}")
 
-        # Crear diálogo zen
-        dialog = ft.AlertDialog(
-            title=ft.Text(
-                color_scheme["title"],
-                size=20,
-                weight=ft.FontWeight.W_500
-            ),
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        name_field,
-                        ft.Container(height=16),
-                        context_field,
-                        ft.Container(height=20),
-                        ft.ElevatedButton(
-                            "🤖 Pedir consejo IA",
-                            on_click=ask_ai,
-                            style=ft.ButtonStyle(
-                                bgcolor=color_scheme["main"],
-                                color="#FFFFFF",
-                                shape=ft.RoundedRectangleBorder(radius=12)
-                            ),
-                            width=280
-                        )
-                    ],
-                    tight=True
-                ),
-                width=320,
-                bgcolor=color_scheme["bg"],
-                padding=ft.padding.all(20),
-                border_radius=16
-            ),
-            actions=[
-                ft.TextButton(
-                    "Cancelar",
-                    on_click=lambda e: self.close_dialog()
-                ),
-                ft.ElevatedButton(
-                    "✅ Guardar tag",
-                    on_click=create_tag,
-                    style=ft.ButtonStyle(
-                        bgcolor=color_scheme["main"],
-                        color="#FFFFFF"
-                    )
-                )
-            ],
-            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-        )
+        # Forzar actualización
+        self.force_refresh_tags()
 
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
+        print(f"Tag de prueba {tag_type} creado y actualizado")
 
-    def show_ai_advice_dialog(self, advice, tag_type):
-        """Mostrar consejo de IA"""
-        colors = {
-            "positive": {"bg": ZenColors.positive_light, "main": ZenColors.positive_main},
-            "growth": {"bg": ZenColors.growth_light, "main": ZenColors.growth_main}
-        }
+    def open_positive_tag_dialog(self, e):
+        """Abrir pantalla para añadir momento positivo"""
+        self.page = e.page
+        self.page.go("/new_tag?type=positive")
 
-        color_scheme = colors[tag_type]
-
-        dialog = ft.AlertDialog(
-            title=ft.Text("🤖 Consejo de IA", size=18, weight=ft.FontWeight.W_500),
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text(advice, size=14, color=ZenColors.text_secondary)
-                    ]
-                ),
-                width=300,
-                bgcolor=color_scheme["bg"],
-                padding=ft.padding.all(16),
-                border_radius=12
-            ),
-            actions=[
-                ft.TextButton(
-                    "💬 Seguir charlando",
-                    on_click=lambda e: self.continue_chat()
-                ),
-                ft.TextButton(
-                    "✨ Entendido",
-                    on_click=lambda e: self.close_dialog()
-                )
-            ]
-        )
-
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
+    def open_negative_tag_dialog(self, e):
+        """Abrir pantalla para añadir momento negativo"""
+        self.page = e.page
+        self.page.go("/new_tag?type=negative")
 
     def refresh_positive_tags(self):
         """Actualizar visualización de tags positivos"""
+        print(f"Refreshing positive tags. Total: {len(self.positive_tags)}")
+
+        if not self.positive_tags_container:
+            print("ERROR: positive_tags_container no existe")
+            return
+
         self.positive_tags_container.controls.clear()
 
-        for tag in self.positive_tags:
+        for i, tag in enumerate(self.positive_tags):
+            print(f"Creando chip para tag {i}: {tag.emoji} {tag.name}")
+
             tag_chip = ft.Container(
-                content=ft.Row(
+                content=ft.Column(
                     [
-                        ft.Text(f"{tag.emoji} {tag.name}", size=14, weight=ft.FontWeight.W_500),
-                        ft.TextButton(
-                            content=ft.Text("×", size=16),
-                            on_click=lambda e, t=tag: self.remove_positive_tag(t),
-                            style=ft.ButtonStyle(padding=ft.padding.all(4))
+                        ft.Row(
+                            [
+                                ft.Text(f"{tag.emoji} {tag.name}", size=14, weight=ft.FontWeight.W_500),
+                                ft.TextButton(
+                                    content=ft.Text("×", size=16),
+                                    on_click=lambda e, t=tag: self.remove_positive_tag(t),
+                                    style=ft.ButtonStyle(padding=ft.padding.all(4))
+                                )
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                        ),
+                        ft.Text(
+                            tag.context[:50] + "..." if len(tag.context) > 50 else tag.context,
+                            size=12,
+                            color=ZenColors.text_secondary,
+                            italic=True
                         )
                     ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                    spacing=4,
+                    tight=True
                 ),
                 bgcolor=ZenColors.positive_glow,
-                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                padding=ft.padding.all(12),
                 border_radius=16,
-                border=ft.border.all(1, ZenColors.positive_main)
+                border=ft.border.all(1, ZenColors.positive_main),
+                margin=ft.margin.only(bottom=8)
             )
             self.positive_tags_container.controls.append(tag_chip)
 
-        if self.page:
-            self.page.update()
+        print(f"Chips creados: {len(self.positive_tags_container.controls)}")
 
-    def refresh_growth_tags(self):
-        """Actualizar visualización de tags de crecimiento"""
-        self.growth_tags_container.controls.clear()
+    def refresh_negative_tags(self):
+        """Actualizar visualización de tags negativos"""
+        print(f"Refreshing negative tags. Total: {len(self.negative_tags)}")
 
-        for tag in self.growth_tags:
+        if not self.negative_tags_container:
+            print("ERROR: negative_tags_container no existe")
+            return
+
+        self.negative_tags_container.controls.clear()
+
+        for i, tag in enumerate(self.negative_tags):
+            print(f"Creando chip para tag negativo {i}: {tag.emoji} {tag.name}")
+
             tag_chip = ft.Container(
-                content=ft.Row(
+                content=ft.Column(
                     [
-                        ft.Text(f"{tag.emoji} {tag.name}", size=14, weight=ft.FontWeight.W_500),
-                        ft.TextButton(
-                            content=ft.Text("×", size=16),
-                            on_click=lambda e, t=tag: self.remove_growth_tag(t),
-                            style=ft.ButtonStyle(padding=ft.padding.all(4))
+                        ft.Row(
+                            [
+                                ft.Text(f"{tag.emoji} {tag.name}", size=14, weight=ft.FontWeight.W_500),
+                                ft.TextButton(
+                                    content=ft.Text("×", size=16),
+                                    on_click=lambda e, t=tag: self.remove_negative_tag(t),
+                                    style=ft.ButtonStyle(padding=ft.padding.all(4))
+                                )
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                        ),
+                        ft.Text(
+                            tag.context[:50] + "..." if len(tag.context) > 50 else tag.context,
+                            size=12,
+                            color=ZenColors.text_secondary,
+                            italic=True
                         )
                     ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                    spacing=4,
+                    tight=True
                 ),
-                bgcolor=ZenColors.growth_glow,
-                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                bgcolor=ZenColors.negative_glow,
+                padding=ft.padding.all(12),
                 border_radius=16,
-                border=ft.border.all(1, ZenColors.growth_main)
+                border=ft.border.all(1, ZenColors.negative_main),
+                margin=ft.margin.only(bottom=8)
             )
-            self.growth_tags_container.controls.append(tag_chip)
+            self.negative_tags_container.controls.append(tag_chip)
 
-        if self.page:
-            self.page.update()
+        print(f"Chips negativos creados: {len(self.negative_tags_container.controls)}")
 
     def remove_positive_tag(self, tag):
         """Eliminar tag positivo"""
         self.positive_tags.remove(tag)
         self.refresh_positive_tags()
 
-    def remove_growth_tag(self, tag):
-        """Eliminar tag de crecimiento"""
-        self.growth_tags.remove(tag)
-        self.refresh_growth_tags()
+    def remove_negative_tag(self, tag):  # Cambiado nombre
+        """Eliminar tag negativo"""  # Cambiado texto
+        self.negative_tags.remove(tag)  # Cambiado
+        self.refresh_negative_tags()  # Cambiado
 
     def set_worth_it(self, value, e):
         """Establecer si mereció la pena el día"""
@@ -574,17 +598,19 @@ class EntryScreen:
             from services import db
 
             if self.current_user:
+                # Si no hay tags pero sí reflexión, guardar solo la reflexión
                 entry_id = db.save_daily_entry(
                     user_id=self.current_user['id'],
                     free_reflection=self.reflection_field.value.strip(),
                     positive_tags=self.positive_tags,
-                    growth_tags=self.growth_tags,
+                    negative_tags=self.negative_tags,
                     worth_it=self.worth_it
                 )
 
                 if entry_id:
-                    self.show_success("Reflexión guardada con amor 🌸")
-                    self.clear_form()
+                    self.show_success("Reflexion guardada correctamente")
+                    # NO limpiar el formulario aquí para que los tags sigan visibles
+                    # self.clear_form()
                 else:
                     self.show_error("Error al guardar")
             else:
@@ -607,7 +633,7 @@ class EntryScreen:
             summary = get_daily_summary(
                 reflection=self.reflection_field.value.strip(),
                 positive_tags=self.positive_tags,
-                growth_tags=self.growth_tags,
+                negative_tags=self.negative_tags,  # Cambiado de growth_tags
                 worth_it=self.worth_it
             )
 
@@ -620,7 +646,7 @@ class EntryScreen:
     def show_daily_summary_dialog(self, summary):
         """Mostrar resumen diario de IA"""
         dialog = ft.AlertDialog(
-            title=ft.Text("🤖 Resumen de tu día", size=18, weight=ft.FontWeight.W_500),
+            title=ft.Text("IA - Resumen de tu dia", size=18, weight=ft.FontWeight.W_500),
             content=ft.Container(
                 content=ft.Column(
                     [
@@ -635,11 +661,11 @@ class EntryScreen:
             ),
             actions=[
                 ft.TextButton(
-                    "💬 Continuar chat",
+                    "Continuar chat",
                     on_click=lambda e: self.continue_chat()
                 ),
                 ft.TextButton(
-                    "🙏 Gracias",
+                    "Gracias",
                     on_click=lambda e: self.close_dialog()
                 )
             ]
@@ -652,13 +678,13 @@ class EntryScreen:
     def continue_chat(self):
         """Continuar chat (funcionalidad futura)"""
         self.close_dialog()
-        self.show_success("Chat extendido próximamente 🚀")
+        self.show_success("Chat extendido proximamente")
 
     def clear_form(self):
         """Limpiar formulario zen"""
         self.reflection_field.value = ""
         self.positive_tags.clear()
-        self.growth_tags.clear()
+        self.negative_tags.clear()  # Cambiado
         self.worth_it = None
 
         # Restablecer botones
@@ -667,9 +693,9 @@ class EntryScreen:
             btn.style.color = "#4A5568"
 
         self.refresh_positive_tags()
-        self.refresh_growth_tags()
+        self.refresh_negative_tags()  # Cambiado
 
-        if self.page:
+        if hasattr(self, 'page') and self.page:
             self.page.update()
 
     def close_dialog(self):
@@ -677,6 +703,11 @@ class EntryScreen:
         if self.page and self.page.dialog:
             self.page.dialog.open = False
             self.page.update()
+
+    def go_to_calendar(self, e):
+        """Navegar al calendario"""
+        self.page = e.page
+        self.page.go("/calendar")
 
     def logout_click(self, e):
         """Cerrar sesión zen"""
@@ -686,41 +717,26 @@ class EntryScreen:
 
     def show_error(self, message):
         """Mostrar error zen"""
-        if self.page:
+        if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
-                content=ft.Text(f"⚠️ {message}", color="#FFFFFF"),
+                content=ft.Text(f"ERROR: {message}", color="#FFFFFF"),
                 bgcolor="#F56565"
             )
             self.page.overlay.append(snack)
             snack.open = True
             self.page.update()
+        else:
+            print(f"ERROR: {message}")
 
     def show_success(self, message):
         """Mostrar éxito zen"""
-        if self.page:
+        if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
-                content=ft.Text(f"🌸 {message}", color="#FFFFFF"),
+                content=ft.Text(f"OK: {message}", color="#FFFFFF"),
                 bgcolor="#48BB78"
             )
             self.page.overlay.append(snack)
             snack.open = True
             self.page.update()
-    def open_positive_tag_dialog(self, e):
-        """Abrir diálogo para añadir momento positivo"""
-        dialog = TagDialog(
-            page=e.page,
-            tag_type="positive",
-            on_tag_created=self.on_tag_created,
-            on_error=self.show_error
-        )
-        dialog.show()
-
-    def open_growth_tag_dialog(self, e):
-    """Abrir diálogo para añadir área de crecimiento"""
-         dialog = TagDialog(
-            page=e.page,
-            tag_type="growth",
-            on_tag_created=self.on_tag_created,
-            on_error=self.show_error
-         )
-        dialog.show()
+        else:
+            print(f"OK: {message}")

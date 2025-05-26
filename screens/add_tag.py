@@ -8,10 +8,10 @@ class ZenColors:
     positive_glow = "#A8EDEA"
     positive_main = "#48BB78"
 
-    # Crecimiento
-    growth_light = "#FFF3E0"
-    growth_glow = "#FFECD2"
-    growth_main = "#ED8936"
+    # Negativos (antes growth)
+    negative_light = "#FEE2E2"
+    negative_glow = "#FECACA"
+    negative_main = "#EF4444"
 
     # Base
     background = "#F8FAFC"
@@ -24,9 +24,9 @@ class DynamicTag:
     def __init__(self, name, context, tag_type, ai_feedback=""):
         self.name = name
         self.context = context
-        self.type = tag_type  # "positive" o "growth"
+        self.type = tag_type  # "positive" o "negative"
         self.ai_feedback = ai_feedback
-        self.emoji = "✨" if tag_type == "positive" else "🌱"
+        self.emoji = "+" if tag_type == "positive" else "-"
 
 class TagDialog:
     def __init__(self, page, tag_type, on_tag_created=None, on_error=None):
@@ -35,7 +35,7 @@ class TagDialog:
 
         Args:
             page: Objeto page de Flet
-            tag_type: "positive" o "growth"
+            tag_type: "positive" o "negative"
             on_tag_created: Callback cuando se crea un tag (recibe DynamicTag)
             on_error: Callback para mostrar errores (recibe mensaje string)
         """
@@ -54,12 +54,12 @@ class TagDialog:
             "positive": {
                 "bg": ZenColors.positive_light,
                 "main": ZenColors.positive_main,
-                "title": "✨ Nuevo Momento Positivo"
+                "title": "+ Nuevo Momento Positivo"
             },
-            "growth": {
-                "bg": ZenColors.growth_light,
-                "main": ZenColors.growth_main,
-                "title": "🌱 Nueva Área de Crecimiento"
+            "negative": {  # Cambiado de growth
+                "bg": ZenColors.negative_light,  # Cambiado
+                "main": ZenColors.negative_main,  # Cambiado
+                "title": "- Nuevo Momento Negativo"  # Cambiado
             }
         }
 
@@ -71,14 +71,14 @@ class TagDialog:
             label="Nombre del tag",
             hint_text="Ej: Trabajo, Familia, Ejercicio...",
             border_radius=12,
-            autofocus=True,
+            autofocus=True,  # Se enfocará automáticamente al renderizarse
             border_color="#E2E8F0",
             focused_border_color=self.color_scheme["main"]
         )
 
         self.context_field = ft.TextField(
-            label="¿Qué pasó exactamente?",
-            hint_text="Describe la situación específica...",
+            label="Que paso exactamente?",
+            hint_text="Describe la situacion especifica...",
             multiline=True,
             min_lines=3,
             max_lines=5,
@@ -93,7 +93,7 @@ class TagDialog:
             return False, "Escribe un nombre para el tag"
 
         if not self.context_field.value or not self.context_field.value.strip():
-            return False, "Describe qué pasó exactamente"
+            return False, "Describe que paso exactamente"
 
         return True, ""
 
@@ -157,7 +157,7 @@ class TagDialog:
         """Mostrar diálogo con el consejo de IA"""
         advice_dialog = ft.AlertDialog(
             title=ft.Text(
-                "🤖 Consejo de IA",
+                "IA - Consejo",
                 size=18,
                 weight=ft.FontWeight.W_500,
                 color=self.color_scheme["main"]
@@ -184,11 +184,11 @@ class TagDialog:
             ),
             actions=[
                 ft.TextButton(
-                    "✨ Entendido",
+                    "* Entendido",
                     on_click=lambda e: self.close_advice_dialog()
                 ),
                 ft.ElevatedButton(
-                    "💾 Guardar con consejo",
+                    "Guardar con consejo",
                     on_click=lambda e: self.create_tag_with_advice(advice),
                     style=ft.ButtonStyle(
                         bgcolor=self.color_scheme["main"],
@@ -244,7 +244,7 @@ class TagDialog:
                     self.context_field,
                     ft.Container(height=20),
                     ft.ElevatedButton(
-                        "🤖 Pedir consejo IA",
+                        "IA Pedir consejo",
                         on_click=self.ask_ai_advice,
                         style=ft.ButtonStyle(
                             bgcolor=self.color_scheme["main"],
@@ -270,14 +270,14 @@ class TagDialog:
         """Crear los botones de acción del diálogo"""
         return [
             ft.TextButton(
-                "❌ Cancelar",
+                "X Cancelar",
                 on_click=lambda e: self.close(),
                 style=ft.ButtonStyle(
                     color=ZenColors.text_secondary
                 )
             ),
             ft.ElevatedButton(
-                "✅ Guardar tag",
+                "✓ Guardar tag",
                 on_click=self.create_tag,
                 style=ft.ButtonStyle(
                     bgcolor=self.color_scheme["main"],
@@ -318,9 +318,7 @@ class TagDialog:
         self.dialog.open = True
         self.page.update()
 
-        # Opcional: enfocar el primer campo
-        if self.name_field:
-            self.name_field.focus()
+        # Nota: Eliminamos el focus() para evitar errores de renderizado
 
     def close(self):
         """Cerrar el diálogo"""
@@ -347,23 +345,23 @@ class TagDialogExample:
     def on_tag_created(self, tag):
         """Callback cuando se crea un tag"""
         self.tags.append(tag)
-        print(f"✅ Tag creado: {tag.name} ({tag.type})")
+        print(f"OK Tag creado: {tag.name} ({tag.type})")
         if tag.ai_feedback:
-            print(f"🤖 Con consejo: {tag.ai_feedback[:50]}...")
+            print(f"IA Con consejo: {tag.ai_feedback[:50]}...")
 
         # Aquí actualizarías tu UI principal
-        self.show_success(f"Tag {tag.emoji} '{tag.name}' añadido")
+        self.show_success(f"Tag {tag.emoji} '{tag.name}' anadido")
 
     def on_error(self, message):
         """Callback para errores"""
-        print(f"❌ Error: {message}")
+        print(f"ERROR: {message}")
         # Aquí mostrarías el error en tu UI
         self.show_error(message)
 
     def show_success(self, message):
         """Mostrar mensaje de éxito"""
         snack = ft.SnackBar(
-            content=ft.Text(f"🌸 {message}", color="#FFFFFF"),
+            content=ft.Text(f"OK: {message}", color="#FFFFFF"),
             bgcolor="#48BB78"
         )
         self.page.overlay.append(snack)
@@ -373,7 +371,7 @@ class TagDialogExample:
     def show_error(self, message):
         """Mostrar mensaje de error"""
         snack = ft.SnackBar(
-            content=ft.Text(f"⚠️ {message}", color="#FFFFFF"),
+            content=ft.Text(f"ERROR: {message}", color="#FFFFFF"),
             bgcolor="#F56565"
         )
         self.page.overlay.append(snack)
@@ -390,11 +388,11 @@ class TagDialogExample:
         )
         dialog.show()
 
-    def open_growth_dialog(self, e):
-        """Abrir diálogo para áreas de crecimiento"""
+    def open_negative_dialog(self, e):  # Cambiado nombre
+        """Abrir diálogo para momentos negativos"""  # Cambiado texto
         dialog = TagDialog(
             page=self.page,
-            tag_type="growth",
+            tag_type="negative",  # Cambiado de growth
             on_tag_created=self.on_tag_created,
             on_error=self.on_error
         )

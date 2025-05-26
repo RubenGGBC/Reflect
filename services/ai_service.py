@@ -42,35 +42,46 @@ class ZenAIService:
             }
         }
 
-        self.growth_patterns = {
+        # Patrones para momentos negativos (antes growth_patterns)
+        self.negative_patterns = {
             "trabajo": {
                 "keywords": ["estrés", "presión", "conflicto", "frustración", "cansancio", "sobrecarga"],
                 "advice": [
-                    "🌱 Los desafíos laborales son oportunidades disfrazadas. ¿Qué te está enseñando esta situación?",
-                    "💼 Considera tomar pequeños descansos durante el día para reconectar contigo mismo.",
+                    "💔 Los desafíos laborales duelen, pero cada dificultad nos enseña algo. ¿Qué puedes aprender de esto?",
+                    "💼 Es normal sentirse abrumado en el trabajo. Toma pequeños respiros durante el día.",
                     "🧘 Antes de reaccionar, respira profundo. Tu bienestar es más importante que cualquier deadline.",
-                    "📝 Documenta tus logros. A veces olvidamos cuánto hemos crecido.",
-                    "🤝 ¿Hay alguien en tu equipo con quien puedas hablar sobre esto?"
+                    "📝 Documenta lo que te genera estrés. A veces escribirlo ayuda a encontrar soluciones.",
+                    "🤝 ¿Hay alguien en tu entorno con quien puedas hablar sobre esto?"
                 ]
             },
             "emocional": {
                 "keywords": ["triste", "ansioso", "solo", "abrumado", "confundido", "perdido"],
                 "advice": [
-                    "🌊 Las emociones fluyen como las olas. Esta sensación también pasará.",
-                    "💙 Ser compasivo contigo mismo es el primer paso hacia la sanación.",
-                    "🌱 Los momentos difíciles nos enseñan sobre nuestra propia resistencia.",
-                    "🤗 Date permiso para sentir sin juzgarte. Eres humano.",
-                    "🌟 Mañana será un nuevo día, con nuevas posibilidades."
+                    "🌊 Las emociones difíciles fluyen como las tormentas. Esta tormenta también pasará.",
+                    "💙 Ser compasivo contigo mismo en los momentos duros es un acto de amor propio.",
+                    "🌱 Los momentos dolorosos, aunque difíciles, nos ayudan a conocer nuestra propia fortaleza.",
+                    "🤗 Date permiso para sentir sin juzgarte. Es humano tener días difíciles.",
+                    "🌟 Mañana será un nuevo día, con nuevas oportunidades de sanar."
                 ]
             },
             "salud": {
                 "keywords": ["cansado", "enfermo", "dolor", "agotado", "sin energía"],
                 "advice": [
-                    "🌿 Tu cuerpo te está enviando un mensaje. Escúchalo con amor.",
-                    "💚 Pequeños actos de autocuidado pueden marcar una gran diferencia.",
-                    "🛌 El descanso no es un lujo, es una necesidad. Date permiso para parar.",
-                    "🥗 Nutrir tu cuerpo es nutrir tu espíritu. ¿Qué necesitas hoy?",
-                    "🚶‍♀️ A veces un paseo corto puede cambiar completamente tu energía."
+                    "🌿 Tu cuerpo te está pidiendo atención. Escúchalo con amor y paciencia.",
+                    "💚 Pequeños actos de autocuidado pueden marcar una gran diferencia en tu bienestar.",
+                    "🛌 El descanso no es un lujo, es una necesidad. Date permiso para parar y recuperarte.",
+                    "🥗 Nutrir tu cuerpo con cuidado es nutrir tu espíritu. ¿Qué necesitas hoy?",
+                    "🚶‍♀️ A veces un paseo corto o un poco de aire fresco puede cambiar tu energía."
+                ]
+            },
+            "relaciones": {
+                "keywords": ["conflicto", "discusión", "ruptura", "soledad", "rechazo", "incomprensión"],
+                "advice": [
+                    "💔 Las relaciones tienen altibajos. Los momentos difíciles también pueden fortalecer los vínculos.",
+                    "🤝 A veces necesitamos espacio para procesar. Date tiempo antes de reaccionar.",
+                    "💭 Intenta ver la perspectiva del otro, pero también valida tus propios sentimientos.",
+                    "🗣️ La comunicación honesta y respetuosa puede sanar muchas heridas.",
+                    "❤️ Recuerda que mereces relaciones que te nutran y te respeten."
                 ]
             }
         }
@@ -92,7 +103,7 @@ def analyze_tag(tag_name: str, context: str, tag_type: str) -> str:
     Args:
         tag_name: Nombre del tag (ej: "Trabajo")
         context: Contexto específico de lo que pasó
-        tag_type: "positive" o "growth"
+        tag_type: "positive" o "negative"
 
     Returns:
         String con consejo personalizado de la IA
@@ -104,8 +115,8 @@ def analyze_tag(tag_name: str, context: str, tag_type: str) -> str:
 
     if tag_type == "positive":
         return _generate_positive_insight(ai, tag_lower, context_lower)
-    else:
-        return _generate_growth_advice(ai, tag_lower, context_lower)
+    else:  # tag_type == "negative"
+        return _generate_negative_advice(ai, tag_lower, context_lower)
 
 def _generate_positive_insight(ai: ZenAIService, tag_name: str, context: str) -> str:
     """Generar insight para momento positivo"""
@@ -133,18 +144,18 @@ def _generate_positive_insight(ai: ZenAIService, tag_name: str, context: str) ->
 
     return base_insight + personalization
 
-def _generate_growth_advice(ai: ZenAIService, tag_name: str, context: str) -> str:
-    """Generar consejo para área de crecimiento"""
+def _generate_negative_advice(ai: ZenAIService, tag_name: str, context: str) -> str:
+    """Generar consejo para momento negativo"""
 
     # Detectar categoría de desafío
     category = "emocional"  # default
-    for cat, pattern in ai.growth_patterns.items():
+    for cat, pattern in ai.negative_patterns.items():
         if any(keyword in context or keyword in tag_name for keyword in pattern["keywords"]):
             category = cat
             break
 
     # Seleccionar consejo base
-    advice_list = ai.growth_patterns[category]["advice"]
+    advice_list = ai.negative_patterns[category]["advice"]
     base_advice = random.choice(advice_list)
 
     # Añadir pregunta reflexiva específica
@@ -154,19 +165,21 @@ def _generate_growth_advice(ai: ZenAIService, tag_name: str, context: str) -> st
         reflection = "\n\n💭 Reflexiona: ¿Qué necesita tu corazón en este momento?"
     elif category == "salud":
         reflection = "\n\n🌱 Considera: ¿Qué pequeño paso puedes dar hoy para cuidarte mejor?"
+    elif category == "relaciones":
+        reflection = "\n\n💝 Piensa: ¿Cómo puedes honrar tus sentimientos mientras mantienes el respeto por otros?"
     else:
-        reflection = "\n\n✨ Recuerda: Los desafíos son maestros disfrazados. ¿Qué te está enseñando esto?"
+        reflection = "\n\n✨ Recuerda: Los momentos difíciles son maestros disfrazados. ¿Qué te está enseñando esto?"
 
     return base_advice + reflection
 
-def get_daily_summary(reflection: str, positive_tags: List, growth_tags: List, worth_it: Optional[bool]) -> str:
+def get_daily_summary(reflection: str, positive_tags: List, negative_tags: List, worth_it: Optional[bool]) -> str:
     """
     Generar resumen contemplativo del día completo
 
     Args:
         reflection: Texto de reflexión libre
         positive_tags: Lista de tags positivos
-        growth_tags: Lista de tags de crecimiento
+        negative_tags: Lista de tags negativos (antes growth_tags)
         worth_it: Si el día mereció la pena (True/False/None)
 
     Returns:
@@ -178,10 +191,10 @@ def get_daily_summary(reflection: str, positive_tags: List, growth_tags: List, w
     # Analizar el tono general
     word_count = len(reflection.split())
     positive_words = ["bien", "feliz", "logré", "disfruté", "amor", "alegre", "éxito", "genial"]
-    growth_words = ["difícil", "problema", "estrés", "cansado", "frustrado", "preocupado"]
+    negative_words = ["difícil", "problema", "estrés", "cansado", "frustrado", "preocupado", "triste", "mal"]
 
     positive_count = sum(1 for word in positive_words if word in reflection.lower())
-    growth_count = sum(1 for word in growth_words if word in reflection.lower())
+    negative_count = sum(1 for word in negative_words if word in reflection.lower())
 
     # Construir resumen
     summary_parts = []
@@ -197,12 +210,12 @@ def get_daily_summary(reflection: str, positive_tags: List, growth_tags: List, w
         summary_parts.append("\n\n💭 A veces las reflexiones más breves contienen las verdades más profundas.")
 
     # Análisis de los tags
-    if positive_tags and growth_tags:
-        summary_parts.append(f"\n\n⚖️ Has identificado {len(positive_tags)} momentos luminosos y {len(growth_tags)} áreas de crecimiento. Esta consciencia equilibrada es el corazón de la sabiduría.")
+    if positive_tags and negative_tags:
+        summary_parts.append(f"\n\n⚖️ Has identificado {len(positive_tags)} momentos luminosos y {len(negative_tags)} momentos difíciles. Esta consciencia equilibrada es el corazón de la sabiduría.")
     elif positive_tags:
         summary_parts.append(f"\n\n✨ Has reconocido {len(positive_tags)} momentos positivos. Celebrar lo bueno alimenta tu alma.")
-    elif growth_tags:
-        summary_parts.append(f"\n\n🌱 Has identificado {len(growth_tags)} áreas de crecimiento. Tu honestidad contigo mismo es valiente.")
+    elif negative_tags:
+        summary_parts.append(f"\n\n💔 Has identificado {len(negative_tags)} momentos difíciles. Tu honestidad contigo mismo es valiente.")
 
     # Análisis del "worth_it"
     if worth_it is True:
@@ -213,12 +226,12 @@ def get_daily_summary(reflection: str, positive_tags: List, growth_tags: List, w
         summary_parts.append("\n\n🤔 Aún no has decidido si el día mereció la pena. A veces la respuesta viene con el tiempo.")
 
     # Mensaje específico según el balance
-    if positive_count > growth_count:
+    if positive_count > negative_count:
         insight = "\n\n🌟 Tu día parece haber estado lleno de luz. Lleva esta energía contigo como un faro interior."
-    elif growth_count > positive_count:
-        insight = "\n\n🌱 Has enfrentado desafíos hoy. Cada dificultad es una semilla de fortaleza que crece en tu interior."
+    elif negative_count > positive_count:
+        insight = "\n\n💔 Has enfrentado momentos difíciles hoy. Cada dificultad es una oportunidad de fortalecerte interiormente."
     else:
-        insight = "\n\n⚖️ Tu día ha tenido luces y sombras, como todos los días hermosos de una vida auténtica."
+        insight = "\n\n⚖️ Tu día ha tenido luces y sombras, como todos los días auténticos de una vida real."
 
     summary_parts.append(insight)
 
@@ -228,7 +241,7 @@ def get_daily_summary(reflection: str, positive_tags: List, growth_tags: List, w
 
     return "".join(summary_parts)
 
-def get_mood_score(reflection: str, positive_tags: List, growth_tags: List, worth_it: Optional[bool]) -> int:
+def get_mood_score(reflection: str, positive_tags: List, negative_tags: List, worth_it: Optional[bool]) -> int:
     """
     Calcular puntuación de ánimo del 1-10 basada en el día completo
 
@@ -254,11 +267,11 @@ def get_mood_score(reflection: str, positive_tags: List, growth_tags: List, wort
 
     # Ajustar por balance de tags
     positive_tag_count = len(positive_tags)
-    growth_tag_count = len(growth_tags)
+    negative_tag_count = len(negative_tags)
 
-    if positive_tag_count > growth_tag_count:
+    if positive_tag_count > negative_tag_count:
         base_score += 1.0
-    elif growth_tag_count > positive_tag_count:
+    elif negative_tag_count > positive_tag_count:
         base_score -= 0.5
 
     # Ajustar por "worth_it"

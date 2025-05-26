@@ -2,6 +2,9 @@ import flet as ft
 from screens.login_screen import LoginScreen
 from screens.register_screen import RegisterScreen
 from screens.entry_screen import EntryScreen
+from screens.new_tag_screen import NewTagScreen
+from screens.calendar_screen import CalendarScreen
+from screens.day_details_screen import DayDetailsScreen
 
 class ZenColors:
     """Paleta de colores zen y relajantes"""
@@ -15,11 +18,11 @@ class ZenColors:
     positive_glow = "#A8EDEA"
     positive_main = "#48BB78"
 
-    # Sección crecimiento (áreas de mejora)
-    growth_light = "#FFF3E0"
-    growth_accent = "#FCB69F"
-    growth_glow = "#FFECD2"
-    growth_main = "#ED8936"
+    # Sección negativa (antes growth)
+    negative_light = "#FEE2E2"
+    negative_accent = "#FCB69F"
+    negative_glow = "#FECACA"
+    negative_main = "#EF4444"
 
     # Base zen
     background = "#F8FAFC"
@@ -43,10 +46,14 @@ class ReflectApp:
         self.login_screen = None
         self.register_screen = None
         self.entry_screen = None
+        self.new_tag_screen = None
+        self.calendar_screen = None
+        self.day_details_screen = None
+        self.current_day_details = None  # Para pasar datos a la pantalla de detalles
 
     def main(self, page: ft.Page):
         # Configuración zen de la página
-        page.title = "ReflectApp - Tu espacio de reflexión"
+        page.title = "ReflectApp - Tu espacio de reflexion"
         page.theme_mode = ft.ThemeMode.LIGHT
         page.padding = 0
         page.spacing = 0
@@ -75,7 +82,67 @@ class ReflectApp:
             elif page.route == "/register":
                 page.views.append(self.register_screen.build())
             elif page.route == "/entry":
+                # Establecer página en entry_screen
+                self.entry_screen.page = page
                 page.views.append(self.entry_screen.build())
+            elif page.route.startswith("/new_tag"):
+                # Determinar tipo según parámetros o defecto
+                tag_type = "positive"  # por defecto
+                if "type=negative" in page.route:
+                    tag_type = "negative"
+                elif "type=positive" in page.route:
+                    tag_type = "positive"
+
+                # Crear nueva instancia de NewTagScreen con tipo específico
+                def on_tag_created_with_navigation(tag):
+                    # Establecer página en entry_screen antes de llamar callback
+                    self.entry_screen.page = page
+                    # Llamar al método original
+                    self.entry_screen.on_tag_created(tag)
+                    # Navegar de vuelta a entry
+                    page.go("/entry")
+
+                self.new_tag_screen = NewTagScreen(
+                    tag_type=tag_type,
+                    on_tag_created=on_tag_created_with_navigation,
+                    on_cancel=lambda: page.go("/entry")
+                )
+                page.views.append(self.new_tag_screen.build())
+            elif page.route == "/calendar":
+                # Crear instancia de CalendarScreen
+                def on_go_to_entry():
+                    page.go("/entry")
+
+                def on_view_day(year, month, day, details):
+                    # Navegar a pantalla de detalles del día
+                    page.go(f"/day_details?year={year}&month={month}&day={day}")
+                    # Guardar los detalles para la próxima carga
+                    self.current_day_details = {
+                        "year": year,
+                        "month": month,
+                        "day": day,
+                        "details": details
+                    }
+
+                self.calendar_screen = CalendarScreen(
+                    user_data=self.current_user,
+                    on_go_to_entry=on_go_to_entry,
+                    on_view_day=on_view_day
+                )
+                self.calendar_screen.page = page
+                page.views.append(self.calendar_screen.build())
+            elif page.route.startswith("/day_details"):
+                # Crear instancia de DayDetailsScreen
+                if self.current_day_details:
+                    details = self.current_day_details
+                    self.day_details_screen = DayDetailsScreen(
+                        year=details["year"],
+                        month=details["month"],
+                        day=details["day"],
+                        day_details=details["details"],
+                        on_go_back=lambda: page.go("/calendar")
+                    )
+                    page.views.append(self.day_details_screen.build())
 
             page.update()
 

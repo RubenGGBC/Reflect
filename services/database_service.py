@@ -2,7 +2,7 @@ import sqlite3
 import json
 import hashlib
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
 
 class DatabaseService:
@@ -42,14 +42,14 @@ class DatabaseService:
                     )
                 """)
 
-                # Tabla de entradas diarias zen
+                # Tabla de entradas diarias zen (actualizada para negative_tags)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS daily_entries (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         user_id INTEGER NOT NULL,
                         free_reflection TEXT NOT NULL,
                         positive_tags TEXT DEFAULT '[]',
-                        growth_tags TEXT DEFAULT '[]',
+                        negative_tags TEXT DEFAULT '[]',
                         worth_it INTEGER,
                         overall_sentiment TEXT,
                         mood_score INTEGER,
@@ -61,6 +61,16 @@ class DatabaseService:
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                     )
                 """)
+
+                # Verificar si necesitamos migrar la columna growth_tags a negative_tags
+                cursor.execute("PRAGMA table_info(daily_entries)")
+                columns = [column[1] for column in cursor.fetchall()]
+
+                if 'growth_tags' in columns and 'negative_tags' not in columns:
+                    print("🔄 Migrando growth_tags a negative_tags...")
+                    cursor.execute("ALTER TABLE daily_entries ADD COLUMN negative_tags TEXT DEFAULT '[]'")
+                    cursor.execute("UPDATE daily_entries SET negative_tags = growth_tags WHERE growth_tags IS NOT NULL")
+                    # Nota: No eliminamos growth_tags por compatibilidad hacia atrás
 
                 # Tabla de interacciones con IA
                 cursor.execute("""
@@ -78,7 +88,7 @@ class DatabaseService:
                     )
                 """)
 
-                # Tabla de estadísticas zen
+                # Tabla de estadísticas zen (actualizada para negative_tags)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS zen_stats (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +97,7 @@ class DatabaseService:
                         entries_count INTEGER DEFAULT 0,
                         avg_mood_score REAL DEFAULT 0,
                         positive_tags_count INTEGER DEFAULT 0,
-                        growth_tags_count INTEGER DEFAULT 0,
+                        negative_tags_count INTEGER DEFAULT 0,
                         worth_it_days INTEGER DEFAULT 0,
                         reflection_words INTEGER DEFAULT 0,
                         streak_days INTEGER DEFAULT 0,
@@ -96,6 +106,15 @@ class DatabaseService:
                         UNIQUE(user_id, stat_date)
                     )
                 """)
+
+                # Migrar growth_tags_count a negative_tags_count si es necesario
+                cursor.execute("PRAGMA table_info(zen_stats)")
+                columns = [column[1] for column in cursor.fetchall()]
+
+                if 'growth_tags_count' in columns and 'negative_tags_count' not in columns:
+                    print("🔄 Migrando growth_tags_count a negative_tags_count...")
+                    cursor.execute("ALTER TABLE zen_stats ADD COLUMN negative_tags_count INTEGER DEFAULT 0")
+                    cursor.execute("UPDATE zen_stats SET negative_tags_count = growth_tags_count WHERE growth_tags_count IS NOT NULL")
 
                 # Índices para rendimiento zen
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_entries_user_date ON daily_entries(user_id, entry_date)")
@@ -178,7 +197,7 @@ class DatabaseService:
             return None
 
     def save_daily_entry(self, user_id: int, free_reflection: str,
-                         positive_tags: List = None, growth_tags: List = None,
+                         positive_tags: List = None, negative_tags: List = None,
                          worth_it: Optional[bool] = None) -> Optional[int]:
         """Guardar entrada diaria zen completa"""
         try:
@@ -190,23 +209,23 @@ class DatabaseService:
                 for tag in (positive_tags or [])
             ])
 
-            growth_tags_json = json.dumps([
+            negative_tags_json = json.dumps([
                 {"name": tag.name, "context": tag.context, "emoji": tag.emoji}
-                for tag in (growth_tags or [])
+                for tag in (negative_tags or [])
             ])
 
             # Calcular métricas
             word_count = len(free_reflection.split())
-            mood_score = get_mood_score(free_reflection, positive_tags or [], growth_tags or [], worth_it)
+            mood_score = get_mood_score(free_reflection, positive_tags or [], negative_tags or [], worth_it)
 
             # Generar resumen con IA
-            ai_summary = get_daily_summary(free_reflection, positive_tags or [], growth_tags or [], worth_it)
+            ai_summary = get_daily_summary(free_reflection, positive_tags or [], negative_tags or [], worth_it)
 
             # Determinar sentimiento general
             if mood_score >= 7:
                 sentiment = "positive"
             elif mood_score <= 4:
-                sentiment = "growth"
+                sentiment = "negative"
             else:
                 sentiment = "balanced"
 
@@ -222,10 +241,10 @@ class DatabaseService:
 
                 cursor.execute("""
                     INSERT INTO daily_entries (
-                        user_id, free_reflection, positive_tags, growth_tags,
+                        user_id, free_reflection, positive_tags, negative_tags,
                         worth_it, overall_sentiment, mood_score, ai_summary, word_count
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (user_id, free_reflection, positive_tags_json, growth_tags_json,
+                """, (user_id, free_reflection, positive_tags_json, negative_tags_json,
                       worth_it_int, sentiment, mood_score, ai_summary, word_count))
 
                 entry_id = cursor.lastrowid
@@ -247,7 +266,7 @@ class DatabaseService:
                 cursor = conn.cursor()
 
                 cursor.execute("""
-                    SELECT id, free_reflection, positive_tags, growth_tags, worth_it,
+                    SELECT id, free_reflection, positive_tags, negative_tags, worth_it,
                            overall_sentiment, mood_score, ai_summary, word_count,
                            entry_date, created_at, updated_at
                     FROM daily_entries 
@@ -264,7 +283,7 @@ class DatabaseService:
                         "id": row[0],
                         "free_reflection": row[1],
                         "positive_tags": json.loads(row[2] or "[]"),
-                        "growth_tags": json.loads(row[3] or "[]"),
+                        "negative_tags": json.loads(row[3] or "[]"),
                         "worth_it": None if row[4] is None else bool(row[4]),
                         "overall_sentiment": row[5],
                         "mood_score": row[6],
@@ -340,7 +359,7 @@ class DatabaseService:
 
                 # Tags más comunes
                 cursor.execute("""
-                    SELECT positive_tags, growth_tags
+                    SELECT positive_tags, negative_tags
                     FROM daily_entries 
                     WHERE user_id = ? AND entry_date >= date('now', '-' || ? || ' days')
                 """, (user_id, days))
@@ -398,7 +417,7 @@ class DatabaseService:
                     COUNT(*) as entries_count,
                     AVG(mood_score) as avg_mood,
                     SUM(json_array_length(positive_tags)) as positive_count,
-                    SUM(json_array_length(growth_tags)) as growth_count,
+                    SUM(json_array_length(negative_tags)) as negative_count,
                     SUM(CASE WHEN worth_it = 1 THEN 1 ELSE 0 END) as worth_it_count,
                     SUM(word_count) as total_words
                 FROM daily_entries 
@@ -414,7 +433,7 @@ class DatabaseService:
             cursor.execute("""
                 INSERT OR REPLACE INTO zen_stats (
                     user_id, stat_date, entries_count, avg_mood_score,
-                    positive_tags_count, growth_tags_count, worth_it_days,
+                    positive_tags_count, negative_tags_count, worth_it_days,
                     reflection_words, streak_days
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (user_id, today, stats[0], stats[1] or 0, stats[2] or 0,
@@ -465,7 +484,7 @@ class DatabaseService:
         frequency = {}
 
         for row in tag_results:
-            positive_tags_json, growth_tags_json = row
+            positive_tags_json, negative_tags_json = row
 
             # Procesar tags positivos
             positive_tags = json.loads(positive_tags_json or "[]")
@@ -473,11 +492,11 @@ class DatabaseService:
                 name = tag.get("name", "")
                 frequency[f"✨ {name}"] = frequency.get(f"✨ {name}", 0) + 1
 
-            # Procesar tags de crecimiento
-            growth_tags = json.loads(growth_tags_json or "[]")
-            for tag in growth_tags:
+            # Procesar tags negativos
+            negative_tags = json.loads(negative_tags_json or "[]")
+            for tag in negative_tags:
                 name = tag.get("name", "")
-                frequency[f"🌱 {name}"] = frequency.get(f"🌱 {name}", 0) + 1
+                frequency[f"💔 {name}"] = frequency.get(f"💔 {name}", 0) + 1
 
         # Retornar los 10 más frecuentes
         sorted_tags = sorted(frequency.items(), key=lambda x: x[1], reverse=True)
@@ -493,3 +512,300 @@ class DatabaseService:
         except Exception as e:
             print(f"❌ Error obteniendo contador zen: {e}")
             return 0
+
+    # ====== MÉTODOS PARA CALENDARIO (CABECERAS SIN IMPLEMENTAR) ======
+
+    def get_year_summary(self, user_id: int, year: int) -> Dict[int, Dict[str, int]]:
+        """
+        Obtener resumen de todo el año por meses
+
+        Args:
+            user_id (int): ID del usuario
+            year (int): Año a consultar
+
+        Returns:
+            dict: {month: {"positive": int, "negative": int, "total": int}}
+        """
+        try:
+            # Construir rango de fechas del año
+            first_day = date(year, 1, 1)
+            last_day = date(year, 12, 31)
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Obtener todas las entradas del año
+                cursor.execute("""
+                    SELECT entry_date, positive_tags, negative_tags
+                    FROM daily_entries 
+                    WHERE user_id = ? 
+                          AND entry_date >= ? 
+                          AND entry_date <= ?
+                    ORDER BY entry_date
+                """, (user_id, first_day.isoformat(), last_day.isoformat()))
+
+                results = cursor.fetchall()
+
+                # Inicializar datos para todos los meses
+                year_data = {}
+                for month in range(1, 13):
+                    year_data[month] = {"positive": 0, "negative": 0, "total": 0}
+
+                # Procesar resultados
+                for row in results:
+                    entry_date_str, positive_tags_json, negative_tags_json = row
+
+                    # Extraer mes de la fecha
+                    entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
+                    month = entry_date.month
+
+                    # Contar tags
+                    positive_tags = json.loads(positive_tags_json or "[]")
+                    negative_tags = json.loads(negative_tags_json or "[]")
+
+                    positive_count = len(positive_tags)
+                    negative_count = len(negative_tags)
+
+                    # Acumular en el mes correspondiente
+                    year_data[month]["positive"] += positive_count
+                    year_data[month]["negative"] += negative_count
+                    year_data[month]["total"] += positive_count + negative_count
+
+                return year_data
+
+        except Exception as e:
+            print(f"❌ Error obteniendo resumen del año {year}: {e}")
+            # Retornar estructura vacía en caso de error
+            year_data = {}
+            for month in range(1, 13):
+                year_data[month] = {"positive": 0, "negative": 0, "total": 0}
+            return year_data
+
+    def get_month_summary(self, user_id: int, year: int, month: int) -> Dict[int, Dict[str, Any]]:
+        """
+        Obtener resumen de días específicos de un mes
+
+        Args:
+            user_id (int): ID del usuario
+            year (int): Año
+            month (int): Mes (1-12)
+
+        Returns:
+            dict: {day: {"positive": int, "negative": int, "submitted": bool, "worth_it": bool}}
+        """
+        try:
+            # Construir rango de fechas del mes
+            first_day = date(year, month, 1)
+            if month == 12:
+                last_day = date(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                last_day = date(year, month + 1, 1) - timedelta(days=1)
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Obtener todas las entradas del mes
+                cursor.execute("""
+                    SELECT entry_date, positive_tags, negative_tags, worth_it
+                    FROM daily_entries 
+                    WHERE user_id = ? 
+                          AND entry_date >= ? 
+                          AND entry_date <= ?
+                    ORDER BY entry_date
+                """, (user_id, first_day.isoformat(), last_day.isoformat()))
+
+                results = cursor.fetchall()
+
+                # Procesar resultados
+                month_data = {}
+
+                for row in results:
+                    entry_date_str, positive_tags_json, negative_tags_json, worth_it = row
+
+                    # Extraer día de la fecha
+                    entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
+                    day = entry_date.day
+
+                    # Contar tags positivos y negativos
+                    positive_tags = json.loads(positive_tags_json or "[]")
+                    negative_tags = json.loads(negative_tags_json or "[]")
+
+                    positive_count = len(positive_tags)
+                    negative_count = len(negative_tags)
+
+                    # Convertir worth_it
+                    worth_it_bool = None
+                    if worth_it == 1:
+                        worth_it_bool = True
+                    elif worth_it == 0:
+                        worth_it_bool = False
+
+                    month_data[day] = {
+                        "positive": positive_count,
+                        "negative": negative_count,
+                        "submitted": True,  # Si está en BD, fue submiteado
+                        "worth_it": worth_it_bool
+                    }
+
+                return month_data
+
+        except Exception as e:
+            print(f"❌ Error obteniendo resumen del mes {year}-{month}: {e}")
+            return {}
+
+    def get_day_entry(self, user_id: int, year: int, month: int, day: int) -> Optional[Dict[str, Any]]:
+        """
+        Obtener entrada completa de un día específico
+
+        Args:
+            user_id (int): ID del usuario
+            year (int): Año
+            month (int): Mes
+            day (int): Día
+
+        Returns:
+            dict: {
+                "reflection": str,
+                "positive_tags": list,
+                "negative_tags": list,
+                "worth_it": bool,
+                "mood_score": int,
+                "ai_summary": str
+            } o None si no existe
+        """
+        try:
+            # Construir fecha en formato ISO
+            entry_date = date(year, month, day).isoformat()
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Obtener la entrada del día específico
+                cursor.execute("""
+                    SELECT free_reflection, positive_tags, negative_tags, 
+                           worth_it, mood_score, ai_summary
+                    FROM daily_entries 
+                    WHERE user_id = ? AND entry_date = ?
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                """, (user_id, entry_date))
+
+                result = cursor.fetchone()
+
+                if not result:
+                    return None
+
+                # Desempaquetar resultado
+                reflection, positive_tags_json, negative_tags_json, worth_it, mood_score, ai_summary = result
+
+                # Convertir JSON a listas
+                positive_tags = json.loads(positive_tags_json or "[]")
+                negative_tags = json.loads(negative_tags_json or "[]")
+
+                # Convertir worth_it (puede ser 0, 1, o None)
+                worth_it_bool = None
+                if worth_it == 1:
+                    worth_it_bool = True
+                elif worth_it == 0:
+                    worth_it_bool = False
+
+                return {
+                    "reflection": reflection or "",
+                    "positive_tags": positive_tags,
+                    "negative_tags": negative_tags,
+                    "worth_it": worth_it_bool,
+                    "mood_score": mood_score or 5,
+                    "ai_summary": ai_summary or ""
+                }
+
+        except Exception as e:
+            print(f"❌ Error obteniendo entrada del día {year}-{month}-{day}: {e}")
+            return None
+
+    def has_submitted_today(self, user_id: int) -> bool:
+        """
+        Verificar si el usuario ya submiteó una entrada hoy
+
+        Args:
+            user_id (int): ID del usuario
+
+        Returns:
+            bool: True si ya submiteó hoy, False en caso contrario
+        """
+        try:
+            today = date.today().isoformat()  # Formato: "2024-03-15"
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Buscar si existe una entrada para hoy
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM daily_entries 
+                    WHERE user_id = ? AND entry_date = ?
+                """, (user_id, today))
+
+                count = cursor.fetchone()[0]
+                return count > 0
+
+        except Exception as e:
+            print(f"❌ Error verificando entrada de hoy: {e}")
+            return False
+
+    def get_calendar_colors(self, user_id: int, year: int, month: int) -> Dict[int, str]:
+        """
+        Obtener colores de calendario para un mes específico
+
+        Args:
+            user_id (int): ID del usuario
+            year (int): Año
+            month (int): Mes
+
+        Returns:
+            dict: {day: "color_hex"} para cada día con datos
+        """
+        try:
+            # Colores definidos
+            positive_color = "#48BB78"  # Verde
+            negative_color = "#EF4444"  # Rojo
+            current_day_color = "#9CA3AF"  # Gris
+            future_day_color = "#F8FAFC"  # Blanco
+            neutral_color = "#E5E7EB"  # Gris neutro
+
+            # Obtener datos del mes
+            month_data = self.get_month_summary(user_id, year, month)
+
+            # Fecha actual
+            today = date.today()
+
+            colors = {}
+
+            for day, data in month_data.items():
+                check_date = date(year, month, day)
+
+                # Día futuro
+                if check_date > today:
+                    colors[day] = future_day_color
+                # Día actual sin submitear
+                elif check_date == today and not data.get("submitted", False):
+                    colors[day] = current_day_color
+                # Día con datos
+                elif data.get("submitted", False):
+                    positive = data.get("positive", 0)
+                    negative = data.get("negative", 0)
+
+                    if positive > negative:
+                        colors[day] = positive_color
+                    elif negative > positive:
+                        colors[day] = negative_color
+                    else:
+                        colors[day] = neutral_color
+                # Sin datos
+                else:
+                    colors[day] = neutral_color
+
+            return colors
+
+        except Exception as e:
+            print(f"❌ Error calculando colores del calendario: {e}")
+            return {}
