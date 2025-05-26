@@ -1,6 +1,6 @@
 import flet as ft
 from services.ai_service import analyze_tag, get_daily_summary
-
+from screens.add_tag import TagDialog, DynamicTag
 class ZenColors:
     """Colores zen específicos"""
     # Positivos
@@ -173,7 +173,7 @@ class EntryScreen:
                                                 ),
                                                 ft.TextButton(
                                                     content=ft.Text("＋", size=20, color=ZenColors.positive_main),
-                                                    on_click=lambda e: self.add_tag_dialog("positive"),
+                                                    on_click=lambda e: self.open_add_tag_dialog(e),
                                                     style=ft.ButtonStyle(
                                                         bgcolor=ZenColors.positive_light,
                                                         shape=ft.CircleBorder(),
@@ -209,7 +209,7 @@ class EntryScreen:
                                                 ),
                                                 ft.TextButton(
                                                     content=ft.Text("＋", size=20, color=ZenColors.growth_main),
-                                                    on_click=lambda e: self.add_tag_dialog("growth"),
+                                                    on_click=lambda e: self.open_add_tag_dialog("growth"),
                                                     style=ft.ButtonStyle(
                                                         bgcolor=ZenColors.growth_light,
                                                         shape=ft.CircleBorder(),
@@ -311,8 +311,19 @@ class EntryScreen:
 
         return view
 
-    def add_tag_dialog(self, tag_type):
+    def add_tag_dialog(self, tag_type, e=None):
         """Mostrar diálogo para crear tag dinámico"""
+        print(f"🔍 add_tag_dialog llamado con tag_type: {tag_type}")
+        print(f"🔍 Evento e: {e}")
+        print(f"🔍 Tiene page?: {hasattr(e, 'page') if e else 'e es None'}")
+
+        # Obtener page del evento
+        if not e or not hasattr(e, 'page'):
+            print("❌ Error: No se puede acceder al page del evento")
+            return
+
+        print(f"🔍 Page obtenido: {e.page}")
+        self.page = e.page
 
         # Campos del diálogo
         name_field = ft.TextField(
@@ -536,6 +547,7 @@ class EntryScreen:
 
     def set_worth_it(self, value, e):
         """Establecer si mereció la pena el día"""
+        self.page = e.page
         self.worth_it = value
 
         # Actualizar estilos de botones
@@ -662,7 +674,7 @@ class EntryScreen:
 
     def close_dialog(self):
         """Cerrar diálogo"""
-        if self.page.dialog:
+        if self.page and self.page.dialog:
             self.page.dialog.open = False
             self.page.update()
 
@@ -693,3 +705,22 @@ class EntryScreen:
             self.page.overlay.append(snack)
             snack.open = True
             self.page.update()
+    def open_positive_tag_dialog(self, e):
+        """Abrir diálogo para añadir momento positivo"""
+        dialog = TagDialog(
+            page=e.page,
+            tag_type="positive",
+            on_tag_created=self.on_tag_created,
+            on_error=self.show_error
+        )
+        dialog.show()
+
+    def open_growth_tag_dialog(self, e):
+    """Abrir diálogo para añadir área de crecimiento"""
+         dialog = TagDialog(
+            page=e.page,
+            tag_type="growth",
+            on_tag_created=self.on_tag_created,
+            on_error=self.show_error
+         )
+        dialog.show()
