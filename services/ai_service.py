@@ -1,5 +1,5 @@
 """
-🧠 Servicio de IA Zen para ReflectApp
+🧠 Servicio de IA Zen CORREGIDO CON DEBUG para ReflectApp
 Proporciona análisis específico de tags y resúmenes diarios contemplativos
 """
 
@@ -108,15 +108,22 @@ def analyze_tag(tag_name: str, context: str, tag_type: str) -> str:
     Returns:
         String con consejo personalizado de la IA
     """
+    print(f"🤖 === ANALYZE TAG ===")
+    print(f"🏷️ Tag: {tag_name}")
+    print(f"📝 Context: {context[:50]}...")
+    print(f"🎯 Type: {tag_type}")
 
     ai = ZenAIService()
     context_lower = context.lower()
     tag_lower = tag_name.lower()
 
     if tag_type == "positive":
-        return _generate_positive_insight(ai, tag_lower, context_lower)
+        result = _generate_positive_insight(ai, tag_lower, context_lower)
     else:  # tag_type == "negative"
-        return _generate_negative_advice(ai, tag_lower, context_lower)
+        result = _generate_negative_advice(ai, tag_lower, context_lower)
+
+    print(f"🤖 Resultado: {result[:100]}...")
+    return result
 
 def _generate_positive_insight(ai: ZenAIService, tag_name: str, context: str) -> str:
     """Generar insight para momento positivo"""
@@ -174,7 +181,7 @@ def _generate_negative_advice(ai: ZenAIService, tag_name: str, context: str) -> 
 
 def get_daily_summary(reflection: str, positive_tags: List, negative_tags: List, worth_it: Optional[bool]) -> str:
     """
-    Generar resumen contemplativo del día completo
+    Generar resumen contemplativo del día completo CON DEBUG
 
     Args:
         reflection: Texto de reflexión libre
@@ -185,108 +192,151 @@ def get_daily_summary(reflection: str, positive_tags: List, negative_tags: List,
     Returns:
         Resumen contemplativo personalizado
     """
+    print(f"🤖 === GET DAILY SUMMARY ===")
+    print(f"📝 Reflexión: {reflection[:50]}...")
+    print(f"➕ Tags positivos: {len(positive_tags)}")
+    print(f"➖ Tags negativos: {len(negative_tags)}")
+    print(f"💭 Worth it: {worth_it}")
 
-    ai = ZenAIService()
+    try:
+        ai = ZenAIService()
 
-    # Analizar el tono general
-    word_count = len(reflection.split())
-    positive_words = ["bien", "feliz", "logré", "disfruté", "amor", "alegre", "éxito", "genial"]
-    negative_words = ["difícil", "problema", "estrés", "cansado", "frustrado", "preocupado", "triste", "mal"]
+        # Validar entrada
+        if not reflection:
+            reflection = "Sin reflexión del día"
 
-    positive_count = sum(1 for word in positive_words if word in reflection.lower())
-    negative_count = sum(1 for word in negative_words if word in reflection.lower())
+        if not positive_tags:
+            positive_tags = []
 
-    # Construir resumen
-    summary_parts = []
+        if not negative_tags:
+            negative_tags = []
 
-    # Apertura contemplativa
-    opening = random.choice(ai.contemplative_phrases)
-    summary_parts.append(f"🌸 {opening}.")
+        # Analizar el tono general
+        word_count = len(reflection.split())
+        positive_words = ["bien", "feliz", "logré", "disfruté", "amor", "alegre", "éxito", "genial"]
+        negative_words = ["difícil", "problema", "estrés", "cansado", "frustrado", "preocupado", "triste", "mal"]
 
-    # Análisis de la reflexión
-    if word_count > 50:
-        summary_parts.append("\n\n📝 Veo que te has tomado tiempo para reflexionar profundamente. Esto habla de tu sabiduría interior.")
-    elif word_count < 20:
-        summary_parts.append("\n\n💭 A veces las reflexiones más breves contienen las verdades más profundas.")
+        positive_count = sum(1 for word in positive_words if word in reflection.lower())
+        negative_count = sum(1 for word in negative_words if word in reflection.lower())
 
-    # Análisis de los tags
-    if positive_tags and negative_tags:
-        summary_parts.append(f"\n\n⚖️ Has identificado {len(positive_tags)} momentos luminosos y {len(negative_tags)} momentos difíciles. Esta consciencia equilibrada es el corazón de la sabiduría.")
-    elif positive_tags:
-        summary_parts.append(f"\n\n✨ Has reconocido {len(positive_tags)} momentos positivos. Celebrar lo bueno alimenta tu alma.")
-    elif negative_tags:
-        summary_parts.append(f"\n\n💔 Has identificado {len(negative_tags)} momentos difíciles. Tu honestidad contigo mismo es valiente.")
+        print(f"📊 Análisis: {word_count} palabras, {positive_count} positivas, {negative_count} negativas")
 
-    # Análisis del "worth_it"
-    if worth_it is True:
-        summary_parts.append("\n\n🙏 Sientes que tu día ha merecido la pena. Esta gratitud es un regalo que te das a ti mismo.")
-    elif worth_it is False:
-        summary_parts.append("\n\n🌊 Sientes que el día no ha merecido la pena, y está bien. Algunos días son para aprender, no para brillar.")
-    else:
-        summary_parts.append("\n\n🤔 Aún no has decidido si el día mereció la pena. A veces la respuesta viene con el tiempo.")
+        # Construir resumen
+        summary_parts = []
 
-    # Mensaje específico según el balance
-    if positive_count > negative_count:
-        insight = "\n\n🌟 Tu día parece haber estado lleno de luz. Lleva esta energía contigo como un faro interior."
-    elif negative_count > positive_count:
-        insight = "\n\n💔 Has enfrentado momentos difíciles hoy. Cada dificultad es una oportunidad de fortalecerte interiormente."
-    else:
-        insight = "\n\n⚖️ Tu día ha tenido luces y sombras, como todos los días auténticos de una vida real."
+        # Apertura contemplativa
+        opening = random.choice(ai.contemplative_phrases)
+        summary_parts.append(f"🌸 {opening}.")
 
-    summary_parts.append(insight)
+        # Análisis de la reflexión
+        if word_count > 50:
+            summary_parts.append("\n\n📝 Veo que te has tomado tiempo para reflexionar profundamente. Esto habla de tu sabiduría interior.")
+        elif word_count < 20:
+            summary_parts.append("\n\n💭 A veces las reflexiones más breves contienen las verdades más profundas.")
 
-    # Cierre contemplativo
-    closing = "\n\n💫 Recuerda: cada día que reflexionas sobre tu experiencia es un día de crecimiento. Estás exactamente donde necesitas estar."
-    summary_parts.append(closing)
+        # Análisis de los tags
+        if positive_tags and negative_tags:
+            summary_parts.append(f"\n\n⚖️ Has identificado {len(positive_tags)} momentos luminosos y {len(negative_tags)} momentos difíciles. Esta consciencia equilibrada es el corazón de la sabiduría.")
+        elif positive_tags:
+            summary_parts.append(f"\n\n✨ Has reconocido {len(positive_tags)} momentos positivos. Celebrar lo bueno alimenta tu alma.")
+        elif negative_tags:
+            summary_parts.append(f"\n\n💔 Has identificado {len(negative_tags)} momentos difíciles. Tu honestidad contigo mismo es valiente.")
 
-    return "".join(summary_parts)
+        # Análisis del "worth_it"
+        if worth_it is True:
+            summary_parts.append("\n\n🙏 Sientes que tu día ha merecido la pena. Esta gratitud es un regalo que te das a ti mismo.")
+        elif worth_it is False:
+            summary_parts.append("\n\n🌊 Sientes que el día no ha merecido la pena, y está bien. Algunos días son para aprender, no para brillar.")
+        else:
+            summary_parts.append("\n\n🤔 Aún no has decidido si el día mereció la pena. A veces la respuesta viene con el tiempo.")
+
+        # Mensaje específico según el balance
+        if positive_count > negative_count:
+            insight = "\n\n🌟 Tu día parece haber estado lleno de luz. Lleva esta energía contigo como un faro interior."
+        elif negative_count > positive_count:
+            insight = "\n\n💔 Has enfrentado momentos difíciles hoy. Cada dificultad es una oportunidad de fortalecerte interiormente."
+        else:
+            insight = "\n\n⚖️ Tu día ha tenido luces y sombras, como todos los días auténticos de una vida real."
+
+        summary_parts.append(insight)
+
+        # Cierre contemplativo
+        closing = "\n\n💫 Recuerda: cada día que reflexionas sobre tu experiencia es un día de crecimiento. Estás exactamente donde necesitas estar."
+        summary_parts.append(closing)
+
+        result = "".join(summary_parts)
+        print(f"🤖 Resumen generado: {len(result)} caracteres")
+        return result
+
+    except Exception as e:
+        print(f"❌ ERROR en get_daily_summary: {e}")
+        import traceback
+        traceback.print_exc()
+
+        # Resumen de respaldo en caso de error
+        return """🌸 Cada día es una oportunidad de crecimiento y reflexión.
+
+📝 Has tomado el tiempo para reflexionar sobre tu día, y eso en sí mismo es valioso.
+
+💫 Recuerda que tanto los momentos luminosos como los desafiantes forman parte de tu viaje personal. Cada experiencia te enseña algo sobre ti mismo.
+
+🙏 Continúa cultivando esta práctica de reflexión diaria. Es un regalo que te das a ti mismo."""
 
 def get_mood_score(reflection: str, positive_tags: List, negative_tags: List, worth_it: Optional[bool]) -> int:
     """
-    Calcular puntuación de ánimo del 1-10 basada en el día completo
+    Calcular puntuación de ánimo del 1-10 basada en el día completo CON DEBUG
 
     Returns:
         Puntuación del 1 (muy bajo) al 10 (excelente)
     """
+    print(f"🎯 === GET MOOD SCORE ===")
 
-    base_score = 5.0  # Neutral
+    try:
+        base_score = 5.0  # Neutral
 
-    # Análisis del texto libre
-    positive_words = ["bien", "feliz", "logré", "disfruté", "amor", "alegre", "éxito", "genial", "maravilloso"]
-    negative_words = ["mal", "triste", "difícil", "problema", "estrés", "cansado", "frustrado", "preocupado"]
+        # Analizar el texto libre
+        positive_words = ["bien", "feliz", "logré", "disfruté", "amor", "alegre", "éxito", "genial", "maravilloso"]
+        negative_words = ["mal", "triste", "difícil", "problema", "estrés", "cansado", "frustrado", "preocupado"]
 
-    text_lower = reflection.lower()
-    positive_count = sum(1 for word in positive_words if word in text_lower)
-    negative_count = sum(1 for word in negative_words if word in text_lower)
+        text_lower = reflection.lower() if reflection else ""
+        positive_count = sum(1 for word in positive_words if word in text_lower)
+        negative_count = sum(1 for word in negative_words if word in text_lower)
 
-    # Ajustar por contenido del texto
-    if positive_count > negative_count:
-        base_score += 1.5
-    elif negative_count > positive_count:
-        base_score -= 1.5
+        # Ajustar por contenido del texto
+        if positive_count > negative_count:
+            base_score += 1.5
+        elif negative_count > positive_count:
+            base_score -= 1.5
 
-    # Ajustar por balance de tags
-    positive_tag_count = len(positive_tags)
-    negative_tag_count = len(negative_tags)
+        # Ajustar por balance de tags
+        positive_tag_count = len(positive_tags) if positive_tags else 0
+        negative_tag_count = len(negative_tags) if negative_tags else 0
 
-    if positive_tag_count > negative_tag_count:
-        base_score += 1.0
-    elif negative_tag_count > positive_tag_count:
-        base_score -= 0.5
+        if positive_tag_count > negative_tag_count:
+            base_score += 1.0
+        elif negative_tag_count > positive_tag_count:
+            base_score -= 0.5
 
-    # Ajustar por "worth_it"
-    if worth_it is True:
-        base_score += 1.5
-    elif worth_it is False:
-        base_score -= 1.0
+        # Ajustar por "worth_it"
+        if worth_it is True:
+            base_score += 1.5
+        elif worth_it is False:
+            base_score -= 1.0
 
-    # Bonus por reflexión profunda
-    if len(reflection.split()) > 50:
-        base_score += 0.5
+        # Bonus por reflexión profunda
+        word_count = len(reflection.split()) if reflection else 0
+        if word_count > 50:
+            base_score += 0.5
 
-    # Asegurar rango 1-10
-    final_score = max(1, min(10, round(base_score)))
-    return final_score
+        # Asegurar rango 1-10
+        final_score = max(1, min(10, round(base_score)))
+
+        print(f"🎯 Mood score calculado: {final_score}/10")
+        return final_score
+
+    except Exception as e:
+        print(f"❌ ERROR en get_mood_score: {e}")
+        return 5  # Retornar neutral en caso de error
 
 def get_zen_quote() -> str:
     """Obtener una cita zen aleatoria"""

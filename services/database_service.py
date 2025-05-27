@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
 
 class DatabaseService:
-    """Servicio de base de datos zen para ReflectApp"""
+    """Servicio de base de datos zen para ReflectApp - CORREGIDO"""
 
     def __init__(self, db_path: str = "data/reflect_zen.db"):
         self.db_path = db_path
@@ -21,7 +21,7 @@ class DatabaseService:
             print(f"🗂️ Directorio zen creado: {db_dir}")
 
     def _initialize_database(self) -> None:
-        """Inicializar base de datos con esquema zen"""
+        """Inicializar base de datos con esquema zen CORREGIDO"""
         print(f"🧘‍♀️ Inicializando base de datos zen: {self.db_path}")
 
         try:
@@ -42,7 +42,7 @@ class DatabaseService:
                     )
                 """)
 
-                # Tabla de entradas diarias zen (actualizada para negative_tags)
+                # Tabla de entradas diarias zen (CORREGIDA)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS daily_entries (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,15 +62,27 @@ class DatabaseService:
                     )
                 """)
 
-                # Verificar si necesitamos migrar la columna growth_tags a negative_tags
+                # MIGRACIÓN MEJORADA: growth_tags a negative_tags
                 cursor.execute("PRAGMA table_info(daily_entries)")
                 columns = [column[1] for column in cursor.fetchall()]
 
                 if 'growth_tags' in columns and 'negative_tags' not in columns:
                     print("🔄 Migrando growth_tags a negative_tags...")
                     cursor.execute("ALTER TABLE daily_entries ADD COLUMN negative_tags TEXT DEFAULT '[]'")
-                    cursor.execute("UPDATE daily_entries SET negative_tags = growth_tags WHERE growth_tags IS NOT NULL")
-                    # Nota: No eliminamos growth_tags por compatibilidad hacia atrás
+                    cursor.execute("UPDATE daily_entries SET negative_tags = growth_tags WHERE growth_tags IS NOT NULL AND growth_tags != ''")
+                    print("✅ Migración de growth_tags completada")
+
+                # Si growth_tags existe pero negative_tags también, copiar datos si negative_tags está vacío
+                elif 'growth_tags' in columns and 'negative_tags' in columns:
+                    cursor.execute("""
+                        UPDATE daily_entries 
+                        SET negative_tags = growth_tags 
+                        WHERE (negative_tags IS NULL OR negative_tags = '' OR negative_tags = '[]') 
+                              AND growth_tags IS NOT NULL 
+                              AND growth_tags != '' 
+                              AND growth_tags != '[]'
+                    """)
+                    print("✅ Sincronización de growth_tags a negative_tags completada")
 
                 # Tabla de interacciones con IA
                 cursor.execute("""
@@ -88,7 +100,7 @@ class DatabaseService:
                     )
                 """)
 
-                # Tabla de estadísticas zen (actualizada para negative_tags)
+                # Tabla de estadísticas zen (CORREGIDA)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS zen_stats (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,12 +121,13 @@ class DatabaseService:
 
                 # Migrar growth_tags_count a negative_tags_count si es necesario
                 cursor.execute("PRAGMA table_info(zen_stats)")
-                columns = [column[1] for column in cursor.fetchall()]
+                stat_columns = [column[1] for column in cursor.fetchall()]
 
-                if 'growth_tags_count' in columns and 'negative_tags_count' not in columns:
+                if 'growth_tags_count' in stat_columns and 'negative_tags_count' not in stat_columns:
                     print("🔄 Migrando growth_tags_count a negative_tags_count...")
                     cursor.execute("ALTER TABLE zen_stats ADD COLUMN negative_tags_count INTEGER DEFAULT 0")
                     cursor.execute("UPDATE zen_stats SET negative_tags_count = growth_tags_count WHERE growth_tags_count IS NOT NULL")
+                    print("✅ Migración de estadísticas completada")
 
                 # Índices para rendimiento zen
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_entries_user_date ON daily_entries(user_id, entry_date)")
@@ -127,6 +140,8 @@ class DatabaseService:
 
         except Exception as e:
             print(f"❌ Error inicializando base de datos zen: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
     def create_user(self, email: str, password: str, name: str, avatar_emoji: str = "🧘‍♀️") -> Optional[int]:
@@ -199,20 +214,33 @@ class DatabaseService:
     def save_daily_entry(self, user_id: int, free_reflection: str,
                          positive_tags: List = None, negative_tags: List = None,
                          worth_it: Optional[bool] = None) -> Optional[int]:
-        """Guardar entrada diaria zen completa"""
+        """Guardar entrada diaria zen completa - CORREGIDO"""
         try:
             from services.ai_service import get_mood_score, get_daily_summary
 
-            # Convertir tags a formato JSON
+            print(f"💾 Iniciando guardado para usuario {user_id}")
+
+            # Convertir tags a formato JSON MEJORADO
             positive_tags_json = json.dumps([
-                {"name": tag.name, "context": tag.context, "emoji": tag.emoji}
+                {
+                    "name": getattr(tag, 'name', str(tag)),
+                    "context": getattr(tag, 'context', ''),
+                    "emoji": getattr(tag, 'emoji', '+')
+                }
                 for tag in (positive_tags or [])
             ])
 
             negative_tags_json = json.dumps([
-                {"name": tag.name, "context": tag.context, "emoji": tag.emoji}
+                {
+                    "name": getattr(tag, 'name', str(tag)),
+                    "context": getattr(tag, 'context', ''),
+                    "emoji": getattr(tag, 'emoji', '-')
+                }
                 for tag in (negative_tags or [])
             ])
+
+            print(f"📝 Positive tags JSON: {positive_tags_json}")
+            print(f"📝 Negative tags JSON: {negative_tags_json}")
 
             # Calcular métricas
             word_count = len(free_reflection.split())
@@ -239,15 +267,47 @@ class DatabaseService:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
 
+                # CORREGIDO: Verificar si ya existe entrada para hoy
+                today = date.today().isoformat()
                 cursor.execute("""
-                    INSERT INTO daily_entries (
-                        user_id, free_reflection, positive_tags, negative_tags,
-                        worth_it, overall_sentiment, mood_score, ai_summary, word_count
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (user_id, free_reflection, positive_tags_json, negative_tags_json,
-                      worth_it_int, sentiment, mood_score, ai_summary, word_count))
+                    SELECT id FROM daily_entries 
+                    WHERE user_id = ? AND entry_date = ?
+                """, (user_id, today))
 
-                entry_id = cursor.lastrowid
+                existing_entry = cursor.fetchone()
+
+                if existing_entry:
+                    # ACTUALIZAR entrada existente
+                    entry_id = existing_entry[0]
+                    print(f"🔄 Actualizando entrada existente {entry_id}")
+
+                    cursor.execute("""
+                        UPDATE daily_entries SET
+                            free_reflection = ?,
+                            positive_tags = ?,
+                            negative_tags = ?,
+                            worth_it = ?,
+                            overall_sentiment = ?,
+                            mood_score = ?,
+                            ai_summary = ?,
+                            word_count = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    """, (free_reflection, positive_tags_json, negative_tags_json,
+                          worth_it_int, sentiment, mood_score, ai_summary, word_count, entry_id))
+                else:
+                    # CREAR nueva entrada
+                    print(f"✨ Creando nueva entrada")
+
+                    cursor.execute("""
+                        INSERT INTO daily_entries (
+                            user_id, free_reflection, positive_tags, negative_tags,
+                            worth_it, overall_sentiment, mood_score, ai_summary, word_count
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (user_id, free_reflection, positive_tags_json, negative_tags_json,
+                          worth_it_int, sentiment, mood_score, ai_summary, word_count))
+
+                    entry_id = cursor.lastrowid
 
                 # Actualizar estadísticas zen
                 self._update_zen_stats(user_id, conn)
@@ -257,10 +317,12 @@ class DatabaseService:
 
         except Exception as e:
             print(f"❌ Error guardando entrada zen: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_user_entries(self, user_id: int, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Obtener entradas zen del usuario"""
+        """Obtener entradas zen del usuario - CORREGIDO"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -276,14 +338,26 @@ class DatabaseService:
                 """, (user_id, limit, offset))
 
                 results = cursor.fetchall()
+                print(f"🔍 Encontradas {len(results)} entradas para usuario {user_id}")
 
                 entries = []
                 for row in results:
+                    # Parsear JSON de manera segura
+                    try:
+                        positive_tags = json.loads(row[2] or "[]")
+                    except (json.JSONDecodeError, TypeError):
+                        positive_tags = []
+
+                    try:
+                        negative_tags = json.loads(row[3] or "[]")
+                    except (json.JSONDecodeError, TypeError):
+                        negative_tags = []
+
                     entry = {
                         "id": row[0],
                         "free_reflection": row[1],
-                        "positive_tags": json.loads(row[2] or "[]"),
-                        "negative_tags": json.loads(row[3] or "[]"),
+                        "positive_tags": positive_tags,
+                        "negative_tags": negative_tags,
                         "worth_it": None if row[4] is None else bool(row[4]),
                         "overall_sentiment": row[5],
                         "mood_score": row[6],
@@ -295,10 +369,14 @@ class DatabaseService:
                     }
                     entries.append(entry)
 
+                    print(f"  📄 Entrada {row[9]}: {len(positive_tags)} positivos, {len(negative_tags)} negativos")
+
                 return entries
 
         except Exception as e:
             print(f"❌ Error obteniendo entradas zen: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def get_calendar_data(self, user_id: int, year: int, month: int) -> Dict[str, Any]:
@@ -466,7 +544,7 @@ class DatabaseService:
 
             for i, entry_date_str in enumerate(dates):
                 entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
-                expected_date = today - datetime.timedelta(days=i)
+                expected_date = today - timedelta(days=i)
 
                 if entry_date == expected_date:
                     streak += 1
@@ -487,16 +565,22 @@ class DatabaseService:
             positive_tags_json, negative_tags_json = row
 
             # Procesar tags positivos
-            positive_tags = json.loads(positive_tags_json or "[]")
-            for tag in positive_tags:
-                name = tag.get("name", "")
-                frequency[f"✨ {name}"] = frequency.get(f"✨ {name}", 0) + 1
+            try:
+                positive_tags = json.loads(positive_tags_json or "[]")
+                for tag in positive_tags:
+                    name = tag.get("name", "") if isinstance(tag, dict) else str(tag)
+                    frequency[f"✨ {name}"] = frequency.get(f"✨ {name}", 0) + 1
+            except (json.JSONDecodeError, TypeError):
+                pass
 
             # Procesar tags negativos
-            negative_tags = json.loads(negative_tags_json or "[]")
-            for tag in negative_tags:
-                name = tag.get("name", "")
-                frequency[f"💔 {name}"] = frequency.get(f"💔 {name}", 0) + 1
+            try:
+                negative_tags = json.loads(negative_tags_json or "[]")
+                for tag in negative_tags:
+                    name = tag.get("name", "") if isinstance(tag, dict) else str(tag)
+                    frequency[f"💔 {name}"] = frequency.get(f"💔 {name}", 0) + 1
+            except (json.JSONDecodeError, TypeError):
+                pass
 
         # Retornar los 10 más frecuentes
         sorted_tags = sorted(frequency.items(), key=lambda x: x[1], reverse=True)
@@ -513,19 +597,10 @@ class DatabaseService:
             print(f"❌ Error obteniendo contador zen: {e}")
             return 0
 
-    # ====== MÉTODOS PARA CALENDARIO (CABECERAS SIN IMPLEMENTAR) ======
+    # ====== MÉTODOS PARA CALENDARIO ======
 
     def get_year_summary(self, user_id: int, year: int) -> Dict[int, Dict[str, int]]:
-        """
-        Obtener resumen de todo el año por meses
-
-        Args:
-            user_id (int): ID del usuario
-            year (int): Año a consultar
-
-        Returns:
-            dict: {month: {"positive": int, "negative": int, "total": int}}
-        """
+        """Obtener resumen de todo el año por meses"""
         try:
             # Construir rango de fechas del año
             first_day = date(year, 1, 1)
@@ -559,12 +634,18 @@ class DatabaseService:
                     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
                     month = entry_date.month
 
-                    # Contar tags
-                    positive_tags = json.loads(positive_tags_json or "[]")
-                    negative_tags = json.loads(negative_tags_json or "[]")
+                    # Contar tags de manera segura
+                    try:
+                        positive_tags = json.loads(positive_tags_json or "[]")
+                        positive_count = len(positive_tags)
+                    except (json.JSONDecodeError, TypeError):
+                        positive_count = 0
 
-                    positive_count = len(positive_tags)
-                    negative_count = len(negative_tags)
+                    try:
+                        negative_tags = json.loads(negative_tags_json or "[]")
+                        negative_count = len(negative_tags)
+                    except (json.JSONDecodeError, TypeError):
+                        negative_count = 0
 
                     # Acumular en el mes correspondiente
                     year_data[month]["positive"] += positive_count
@@ -582,17 +663,7 @@ class DatabaseService:
             return year_data
 
     def get_month_summary(self, user_id: int, year: int, month: int) -> Dict[int, Dict[str, Any]]:
-        """
-        Obtener resumen de días específicos de un mes
-
-        Args:
-            user_id (int): ID del usuario
-            year (int): Año
-            month (int): Mes (1-12)
-
-        Returns:
-            dict: {day: {"positive": int, "negative": int, "submitted": bool, "worth_it": bool}}
-        """
+        """Obtener resumen de días específicos de un mes"""
         try:
             # Construir rango de fechas del mes
             first_day = date(year, month, 1)
@@ -626,12 +697,18 @@ class DatabaseService:
                     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
                     day = entry_date.day
 
-                    # Contar tags positivos y negativos
-                    positive_tags = json.loads(positive_tags_json or "[]")
-                    negative_tags = json.loads(negative_tags_json or "[]")
+                    # Contar tags de manera segura
+                    try:
+                        positive_tags = json.loads(positive_tags_json or "[]")
+                        positive_count = len(positive_tags)
+                    except (json.JSONDecodeError, TypeError):
+                        positive_count = 0
 
-                    positive_count = len(positive_tags)
-                    negative_count = len(negative_tags)
+                    try:
+                        negative_tags = json.loads(negative_tags_json or "[]")
+                        negative_count = len(negative_tags)
+                    except (json.JSONDecodeError, TypeError):
+                        negative_count = 0
 
                     # Convertir worth_it
                     worth_it_bool = None
@@ -654,25 +731,7 @@ class DatabaseService:
             return {}
 
     def get_day_entry(self, user_id: int, year: int, month: int, day: int) -> Optional[Dict[str, Any]]:
-        """
-        Obtener entrada completa de un día específico
-
-        Args:
-            user_id (int): ID del usuario
-            year (int): Año
-            month (int): Mes
-            day (int): Día
-
-        Returns:
-            dict: {
-                "reflection": str,
-                "positive_tags": list,
-                "negative_tags": list,
-                "worth_it": bool,
-                "mood_score": int,
-                "ai_summary": str
-            } o None si no existe
-        """
+        """Obtener entrada completa de un día específico"""
         try:
             # Construir fecha en formato ISO
             entry_date = date(year, month, day).isoformat()
@@ -698,9 +757,16 @@ class DatabaseService:
                 # Desempaquetar resultado
                 reflection, positive_tags_json, negative_tags_json, worth_it, mood_score, ai_summary = result
 
-                # Convertir JSON a listas
-                positive_tags = json.loads(positive_tags_json or "[]")
-                negative_tags = json.loads(negative_tags_json or "[]")
+                # Convertir JSON a listas de manera segura
+                try:
+                    positive_tags = json.loads(positive_tags_json or "[]")
+                except (json.JSONDecodeError, TypeError):
+                    positive_tags = []
+
+                try:
+                    negative_tags = json.loads(negative_tags_json or "[]")
+                except (json.JSONDecodeError, TypeError):
+                    negative_tags = []
 
                 # Convertir worth_it (puede ser 0, 1, o None)
                 worth_it_bool = None
@@ -723,15 +789,7 @@ class DatabaseService:
             return None
 
     def has_submitted_today(self, user_id: int) -> bool:
-        """
-        Verificar si el usuario ya submiteó una entrada hoy
-
-        Args:
-            user_id (int): ID del usuario
-
-        Returns:
-            bool: True si ya submiteó hoy, False en caso contrario
-        """
+        """Verificar si el usuario ya submiteó una entrada hoy"""
         try:
             today = date.today().isoformat()  # Formato: "2024-03-15"
 
@@ -751,61 +809,3 @@ class DatabaseService:
         except Exception as e:
             print(f"❌ Error verificando entrada de hoy: {e}")
             return False
-
-    def get_calendar_colors(self, user_id: int, year: int, month: int) -> Dict[int, str]:
-        """
-        Obtener colores de calendario para un mes específico
-
-        Args:
-            user_id (int): ID del usuario
-            year (int): Año
-            month (int): Mes
-
-        Returns:
-            dict: {day: "color_hex"} para cada día con datos
-        """
-        try:
-            # Colores definidos
-            positive_color = "#48BB78"  # Verde
-            negative_color = "#EF4444"  # Rojo
-            current_day_color = "#9CA3AF"  # Gris
-            future_day_color = "#F8FAFC"  # Blanco
-            neutral_color = "#E5E7EB"  # Gris neutro
-
-            # Obtener datos del mes
-            month_data = self.get_month_summary(user_id, year, month)
-
-            # Fecha actual
-            today = date.today()
-
-            colors = {}
-
-            for day, data in month_data.items():
-                check_date = date(year, month, day)
-
-                # Día futuro
-                if check_date > today:
-                    colors[day] = future_day_color
-                # Día actual sin submitear
-                elif check_date == today and not data.get("submitted", False):
-                    colors[day] = current_day_color
-                # Día con datos
-                elif data.get("submitted", False):
-                    positive = data.get("positive", 0)
-                    negative = data.get("negative", 0)
-
-                    if positive > negative:
-                        colors[day] = positive_color
-                    elif negative > positive:
-                        colors[day] = negative_color
-                    else:
-                        colors[day] = neutral_color
-                # Sin datos
-                else:
-                    colors[day] = neutral_color
-
-            return colors
-
-        except Exception as e:
-            print(f"❌ Error calculando colores del calendario: {e}")
-            return {}

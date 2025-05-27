@@ -1,11 +1,11 @@
 """
-🌙 Sistema de Temas Profesionales - ReflectApp
+🌙 Sistema de Temas Profesionales CORREGIDO - ReflectApp
 Sistema centralizado de colores y estilos para modo noche elegante
 """
 
 import flet as ft
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, List, Callable
 import json
 import os
 
@@ -235,11 +235,12 @@ class ElectricDarkTheme(ReflectTheme):
         self.glass_bg = "#6366F120"
 
 class ThemeManager:
-    """Gestor central de temas"""
+    """Gestor central de temas CORREGIDO"""
 
     def __init__(self, storage_path: str = "data/theme_settings.json"):
         self.storage_path = storage_path
         self.current_theme = None
+        self.theme_change_callbacks: List[Callable] = []  # NUEVO: Lista de callbacks
 
         # Registrar todos los temas disponibles
         self.themes = {
@@ -252,6 +253,25 @@ class ThemeManager:
         # Cargar tema guardado o usar por defecto
         self.load_theme()
 
+    def register_callback(self, callback: Callable):
+        """Registrar callback para cambios de tema"""
+        self.theme_change_callbacks.append(callback)
+        print(f"📝 Callback registrado. Total: {len(self.theme_change_callbacks)}")
+
+    def unregister_callback(self, callback: Callable):
+        """Desregistrar callback"""
+        if callback in self.theme_change_callbacks:
+            self.theme_change_callbacks.remove(callback)
+
+    def notify_theme_change(self, theme_type: ThemeType):
+        """Notificar a todos los callbacks sobre cambio de tema"""
+        print(f"📢 Notificando cambio de tema a {len(self.theme_change_callbacks)} callbacks")
+        for callback in self.theme_change_callbacks:
+            try:
+                callback(theme_type)
+            except Exception as e:
+                print(f"❌ Error en callback de tema: {e}")
+
     def get_available_themes(self) -> Dict[ThemeType, ReflectTheme]:
         """Obtener todos los temas disponibles"""
         return self.themes.copy()
@@ -261,10 +281,20 @@ class ThemeManager:
         return self.current_theme
 
     def set_theme(self, theme_type: ThemeType) -> bool:
-        """Cambiar tema actual"""
+        """Cambiar tema actual CON NOTIFICACIÓN"""
         if theme_type in self.themes:
+            old_theme = self.current_theme.name if self.current_theme else "none"
             self.current_theme = self.themes[theme_type]
+            new_theme = self.current_theme.name
+
+            print(f"🎨 Cambio de tema: {old_theme} → {new_theme}")
+
+            # Guardar tema
             self.save_theme(theme_type)
+
+            # IMPORTANTE: Notificar cambio
+            self.notify_theme_change(theme_type)
+
             return True
         return False
 
@@ -280,13 +310,15 @@ class ThemeManager:
                     for theme_type, theme in self.themes.items():
                         if theme.name == theme_name:
                             self.current_theme = theme
+                            print(f"📖 Tema cargado: {theme.display_name}")
                             return
 
             # Si no se encuentra, usar Deep Ocean por defecto
             self.current_theme = self.themes[ThemeType.DEEP_OCEAN]
+            print(f"📖 Tema por defecto: {self.current_theme.display_name}")
 
         except Exception as e:
-            print(f"Error cargando tema: {e}")
+            print(f"❌ Error cargando tema: {e}")
             self.current_theme = self.themes[ThemeType.DEEP_OCEAN]
 
     def save_theme(self, theme_type: ThemeType) -> None:
@@ -297,24 +329,30 @@ class ThemeManager:
 
             data = {
                 'current_theme': self.themes[theme_type].name,
-                'last_updated': str(ft.datetime.now())
+                'last_updated': str(ft.datetime.now()) if hasattr(ft, 'datetime') else "now"
             }
 
             with open(self.storage_path, 'w') as f:
                 json.dump(data, f, indent=2)
 
-        except Exception as e:
-            print(f"Error guardando tema: {e}")
+            print(f"💾 Tema guardado: {self.themes[theme_type].display_name}")
 
-# Instancia global del gestor de temas
+        except Exception as e:
+            print(f"❌ Error guardando tema: {e}")
+
+# Instancia global del gestor de temas CORREGIDA
 theme_manager = ThemeManager()
 
 def get_theme() -> ReflectTheme:
     """Función helper para obtener el tema actual"""
     return theme_manager.get_current_theme()
 
+def register_theme_callback(callback: Callable):
+    """Registrar callback para cambios de tema"""
+    theme_manager.register_callback(callback)
+
 def apply_theme_to_page(page: ft.Page) -> None:
-    """Aplicar tema actual a una página"""
+    """Aplicar tema actual a una página MEJORADO"""
     theme = get_theme()
 
     page.bgcolor = theme.primary_bg
@@ -330,6 +368,8 @@ def apply_theme_to_page(page: ft.Page) -> None:
             on_background=theme.text_primary
         )
     )
+
+    print(f"🎨 Tema aplicado a página: {theme.display_name}")
 
 def create_themed_container(
         content: ft.Control,
@@ -499,9 +539,18 @@ class ZenColors:
 # Instancia global para compatibilidad
 zen_colors = ZenColors()
 
+# NUEVA FUNCIÓN: Forzar actualización global de temas
+def force_global_theme_refresh():
+    """Forzar refresh del tema en toda la aplicación"""
+    theme = get_theme()
+    print(f"🔄 Refresh global del tema: {theme.display_name}")
+
+    # Notificar a todos los callbacks registrados
+    theme_manager.notify_theme_change(None)  # None significa "refresh general"
+
 if __name__ == "__main__":
     # Ejemplo de uso
-    print("🌙 Sistema de Temas - ReflectApp")
+    print("🌙 Sistema de Temas CORREGIDO - ReflectApp")
     print("================================")
 
     for theme_type, theme in theme_manager.get_available_themes().items():

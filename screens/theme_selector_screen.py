@@ -1,20 +1,20 @@
 """
-🎨 Selector de Temas Elegante - ReflectApp
-Pantalla para elegir entre los diferentes temas profesionales
+🎨 Selector de Temas CORREGIDO - ReflectApp
+Pantalla para elegir entre los diferentes temas profesionales con funcionamiento correcto
 """
 
 import flet as ft
 from services.reflect_themes_system import (
     ThemeManager, ThemeType, ReflectTheme, get_theme,
     create_themed_container, create_themed_button,
-    create_gradient_header, apply_theme_to_page
+    create_gradient_header, apply_theme_to_page, theme_manager
 )
 
 class ThemeSelectorScreen:
-    """Pantalla elegante para seleccionar temas"""
+    """Pantalla elegante para seleccionar temas CORREGIDA"""
 
     def __init__(self, on_theme_changed=None, on_go_back=None):
-        self.theme_manager = ThemeManager()
+        self.theme_manager = theme_manager  # Usar instancia global
         self.on_theme_changed = on_theme_changed
         self.on_go_back = on_go_back
         self.page = None
@@ -316,37 +316,45 @@ class ThemeSelectorScreen:
     def select_theme(self, theme_type: ThemeType):
         """Seleccionar tema"""
         self.current_selection = theme_type
-        print(f"Tema seleccionado: {self.theme_manager.themes[theme_type].display_name}")
+        theme_name = self.theme_manager.themes[theme_type].display_name
+        print(f"🎯 Tema seleccionado: {theme_name}")
 
         if self.page:
             self.page.update()
 
     def apply_selected_theme(self, e):
-        """Aplicar tema seleccionado"""
+        """Aplicar tema seleccionado CORREGIDO"""
         if not self.current_selection:
-            self.show_message("Selecciona un tema primero", is_error=True)
+            self.show_message("⚠️ Selecciona un tema primero", is_error=True)
             return
 
-        # Cambiar tema
+        # PASO 1: Cambiar tema en el manager (esto notificará automáticamente)
         success = self.theme_manager.set_theme(self.current_selection)
 
         if success:
             theme_name = self.theme_manager.themes[self.current_selection].display_name
-            self.show_message(f"✨ Tema {theme_name} aplicado correctamente")
+            print(f"✅ Tema {theme_name} aplicado correctamente")
 
-            # Aplicar a la página actual
+            # PASO 2: Aplicar inmediatamente a la página actual
             if self.page:
                 apply_theme_to_page(self.page)
+                self.page.update()
 
-            # Callback si existe
+            # PASO 3: Mostrar mensaje de éxito
+            self.show_message(f"✨ Tema {theme_name} aplicado")
+
+            # PASO 4: Callback externo si existe
             if self.on_theme_changed:
-                self.on_theme_changed(self.current_selection)
+                try:
+                    self.on_theme_changed(self.current_selection)
+                except Exception as ex:
+                    print(f"❌ Error en callback externo: {ex}")
 
-            # Volver después de un delay
-            # self.page.after(2000, self.go_back)
+            # PASO 5: Limpiar selección
+            self.current_selection = None
 
         else:
-            self.show_message("Error aplicando tema", is_error=True)
+            self.show_message("❌ Error aplicando tema", is_error=True)
 
     def show_message(self, message: str, is_error: bool = False):
         """Mostrar mensaje al usuario"""
@@ -372,6 +380,7 @@ class ThemeSelectorScreen:
         elif self.page:
             self.page.go("/entry")
 
+# Clase helper para componentes que reaccionan a cambios de tema
 class ThemeAwareComponent:
     """Clase base para componentes que reaccionan a cambios de tema"""
 
@@ -379,8 +388,12 @@ class ThemeAwareComponent:
         self.theme = get_theme()
         self.components = []  # Lista de componentes a actualizar
 
-    def update_theme(self):
-        """Actualizar tema y refrescar componentes"""
+        # Registrarse para recibir notificaciones de cambio de tema
+        from services.reflect_themes_system import register_theme_callback
+        register_theme_callback(self.on_theme_changed)
+
+    def on_theme_changed(self, theme_type):
+        """Callback cuando cambia el tema"""
         self.theme = get_theme()
         self.refresh_components()
 
@@ -393,79 +406,107 @@ class ThemeAwareComponent:
                 component.color = self.theme.text_primary
             # Añadir más propiedades según necesidad
 
-# Ejemplo de uso avanzado con animaciones
-def create_animated_theme_preview(theme: ReflectTheme, width: int = 200, height: int = 120) -> ft.Container:
-    """Crear preview animado de tema"""
+# Demo avanzado del selector de temas
+def create_theme_demo_advanced():
+    """Crear demo avanzado con cambio en tiempo real"""
 
-    # Elementos animados
-    animated_circle = ft.Container(
-        width=20,
-        height=20,
-        bgcolor=theme.positive_main,
-        border_radius=10,
-        # Añadir animación de rotación si es necesario
-    )
+    def demo_main(page: ft.Page):
+        page.title = "Demo Avanzado - Selector de Temas"
+        page.window.width = 500
+        page.window.height = 800
 
-    gradient_bg = ft.Container(
-        width=width - 20,
-        height=height - 20,
-        gradient=ft.LinearGradient(
-            begin=ft.alignment.top_left,
-            end=ft.alignment.bottom_right,
-            colors=[theme.primary_bg, theme.surface, theme.surface_variant]
-        ),
-        border_radius=12,
-        content=ft.Column(
+        # Aplicar tema inicial
+        apply_theme_to_page(page)
+
+        # Componentes de demo que cambiarán con el tema
+        demo_title = ft.Text(
+            "🎨 Demo de Temas en Tiempo Real",
+            size=24,
+            weight=ft.FontWeight.BOLD,
+            color=get_theme().text_primary,
+            text_align=ft.TextAlign.CENTER
+        )
+
+        demo_container = create_themed_container(
+            content=ft.Column(
+                [
+                    ft.Text("Este contenedor cambia con el tema", color=get_theme().text_secondary),
+                    ft.Container(height=10),
+                    ft.Row(
+                        [
+                            ft.Container(width=50, height=30, bgcolor=get_theme().positive_main, border_radius=5),
+                            ft.Container(width=50, height=30, bgcolor=get_theme().negative_main, border_radius=5),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=10
+                    )
+                ]
+            )
+        )
+
+        def on_theme_changed_demo(theme_type):
+            """Callback para demo - actualizar componentes"""
+            print(f"🔄 Demo: Actualizando por cambio de tema a {theme_type}")
+
+            # Actualizar título
+            demo_title.color = get_theme().text_primary
+
+            # Recrear container con nuevo tema
+            demo_container.bgcolor = get_theme().surface
+            demo_container.border = ft.border.all(1, get_theme().border_color)
+
+            # Aplicar tema a página
+            apply_theme_to_page(page)
+
+            # Actualizar página
+            page.update()
+
+        # Crear selector de temas
+        selector = ThemeSelectorScreen(
+            on_theme_changed=on_theme_changed_demo
+        )
+        selector.page = page
+
+        # Layout principal
+        main_content = ft.Column(
             [
-                ft.Text(
-                    theme.display_name,
-                    size=12,
-                    weight=ft.FontWeight.BOLD,
-                    color=theme.text_primary,
-                    text_align=ft.TextAlign.CENTER
-                ),
-                ft.Container(height=8),
+                demo_title,
+                ft.Container(height=20),
+                demo_container,
+                ft.Container(height=30),
+                ft.Text("Prueba cambiar el tema:", color=get_theme().text_secondary),
+                ft.Container(height=20),
+                # Botones de cambio rápido
                 ft.Row(
                     [
-                        ft.Container(
-                            width=30,
-                            height=8,
-                            bgcolor=theme.positive_main,
-                            border_radius=4
+                        ft.ElevatedButton(
+                            "🌊 Ocean",
+                            on_click=lambda e: selector.theme_manager.set_theme(ThemeType.DEEP_OCEAN)
                         ),
-                        ft.Container(width=4),
-                        ft.Container(
-                            width=30,
-                            height=8,
-                            bgcolor=theme.negative_main,
-                            border_radius=4
-                        )
+                        ft.ElevatedButton(
+                            "💼 Pro",
+                            on_click=lambda e: selector.theme_manager.set_theme(ThemeType.MIDNIGHT_PROFESSIONAL)
+                        ),
+                        ft.ElevatedButton(
+                            "🏔️ Nordic",
+                            on_click=lambda e: selector.theme_manager.set_theme(ThemeType.NORDIC_NIGHT)
+                        ),
+                        ft.ElevatedButton(
+                            "⚡ Electric",
+                            on_click=lambda e: selector.theme_manager.set_theme(ThemeType.ELECTRIC_DARK)
+                        ),
                     ],
-                    alignment=ft.MainAxisAlignment.CENTER
-                ),
-                ft.Container(height=8),
-                animated_circle
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=10
+                )
             ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        ),
-        padding=ft.padding.all(10)
-    )
-
-    return ft.Container(
-        content=gradient_bg,
-        width=width,
-        height=height,
-        bgcolor=theme.surface,
-        border_radius=16,
-        border=ft.border.all(2, theme.border_color),
-        padding=ft.padding.all(10),
-        shadow=ft.BoxShadow(
-            spread_radius=0,
-            blur_radius=8,
-            color=theme.shadow_color,
-            offset=ft.Offset(0, 4)
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=0
         )
-    )
+
+        page.add(main_content)
+
+    return demo_main
 
 if __name__ == "__main__":
     def main(page: ft.Page):
@@ -475,15 +516,16 @@ if __name__ == "__main__":
 
         def on_theme_changed(theme_type):
             print(f"Tema cambiado a: {theme_type}")
-            # Aquí recargarías toda la app con el nuevo tema
-
-            selector = ThemeSelectorScreen(on_theme_changed=on_theme_changed)
-            selector.page = page
 
         # Aplicar tema inicial
-            apply_theme_to_page(page)
+        apply_theme_to_page(page)
 
-            page.views.append(selector.build())
-            page.update()
+        selector = ThemeSelectorScreen(on_theme_changed=on_theme_changed)
+        selector.page = page
 
+        page.views.append(selector.build())
+        page.update()
+
+    # Usar demo normal o avanzado
     ft.app(target=main)
+    # Para demo avanzado: ft.app(target=create_theme_demo_advanced())

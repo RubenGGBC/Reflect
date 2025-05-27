@@ -1,22 +1,5 @@
 import flet as ft
-
-class ZenColors:
-    """Colores zen para la app"""
-    # Positivos (verde)
-    positive_light = "#E8F5E8"
-    positive_main = "#48BB78"
-    positive_glow = "#A8EDEA"
-
-    # Negativos (rojo)
-    negative_light = "#FEE2E2"
-    negative_main = "#EF4444"
-    negative_glow = "#FECACA"
-
-    # Base
-    background = "#F8FAFC"
-    surface = "#FFFFFF"
-    text_primary = "#2D3748"
-    text_secondary = "#4A5568"
+from services.reflect_themes_system import get_theme, create_themed_container, create_gradient_header
 
 class SimpleTag:
     """Clase simple para representar un tag"""
@@ -28,7 +11,7 @@ class SimpleTag:
         self.type = category  # Para compatibilidad
 
 class NewTagScreen:
-    """Pantalla nueva para crear tags fácilmente"""
+    """Pantalla nueva para crear tags fácilmente CON TEMAS"""
 
     def __init__(self, tag_type="positive", on_tag_created=None, on_cancel=None):
         self.tag_type = tag_type  # "positive" o "negative" - predefinido
@@ -42,107 +25,122 @@ class NewTagScreen:
 
         # Estado
         self.page = None
+        self.theme = get_theme()
 
-        # Colores según tipo
-        self.colors = {
-            "positive": {
-                "main": ZenColors.positive_main,
-                "light": ZenColors.positive_light,
-                "title": "Momento Positivo"
-            },
-            "negative": {
-                "main": ZenColors.negative_main,
-                "light": ZenColors.negative_light,
-                "title": "Momento Negativo"
-            }
-        }
-        self.color_scheme = self.colors[tag_type]
+        # Configuración según tipo de tag
+        self.setup_tag_config()
+
+    def setup_tag_config(self):
+        """Configurar colores y textos según tipo de tag"""
+        self.theme = get_theme()  # Actualizar tema
+
+        if self.tag_type == "positive":
+            self.main_color = self.theme.positive_main
+            self.light_color = self.theme.positive_light
+            self.title = "Momento Positivo"
+            self.icon = "✨"
+        else:  # negative
+            self.main_color = self.theme.negative_main
+            self.light_color = self.theme.negative_light
+            self.title = "Momento Negativo"
+            self.icon = "💔"
 
     def build(self):
-        """Construir la vista de la pantalla"""
+        """Construir la vista de la pantalla CON TEMAS"""
+        # Actualizar configuración con tema actual
+        self.setup_tag_config()
 
-        # Campo emoji
+        # Campo emoji con tema
         self.emoji_field = ft.TextField(
             label="Emoji",
             hint_text="😊 🎉 💪 😔 😰 etc...",
             width=120,
             text_align=ft.TextAlign.CENTER,
-            text_style=ft.TextStyle(size=20),
+            text_style=ft.TextStyle(size=20, color=self.theme.text_primary),
             border_radius=12,
-            bgcolor="#FFFFFF"
+            bgcolor=self.theme.surface,
+            border_color=self.theme.border_color,
+            focused_border_color=self.main_color,
+            label_style=ft.TextStyle(color=self.theme.text_secondary)
         )
 
-        # Campo nombre
+        # Campo nombre con tema
         self.name_field = ft.TextField(
             label="Nombre del momento",
             hint_text="Ej: Trabajo, Familia, Ejercicio...",
             border_radius=12,
-            bgcolor="#FFFFFF",
-            expand=True
+            bgcolor=self.theme.surface,
+            expand=True,
+            border_color=self.theme.border_color,
+            focused_border_color=self.main_color,
+            text_style=ft.TextStyle(color=self.theme.text_primary),
+            label_style=ft.TextStyle(color=self.theme.text_secondary)
         )
 
-        # Campo razón/motivo
+        # Campo razón/motivo con tema
         self.reason_field = ft.TextField(
-            label="Que paso exactamente?",
+            label="¿Qué pasó exactamente?",
             hint_text="Describe lo que ocurrió...",
             multiline=True,
             min_lines=3,
             max_lines=6,
             border_radius=12,
-            bgcolor="#FFFFFF"
+            bgcolor=self.theme.surface,
+            border_color=self.theme.border_color,
+            focused_border_color=self.main_color,
+            text_style=ft.TextStyle(color=self.theme.text_primary),
+            label_style=ft.TextStyle(color=self.theme.text_secondary)
+        )
+
+        # Botón volver para header
+        back_button = ft.TextButton(
+            "← Atrás",
+            on_click=self.cancel_click,
+            style=ft.ButtonStyle(color="#FFFFFF")
+        )
+
+        # Header con gradiente temático
+        header = create_gradient_header(
+            title=f"Nuevo {self.title}",
+            left_button=back_button,
+            theme=self.theme
         )
 
         # Vista principal
         view = ft.View(
             "/new_tag",
             [
-                # Header
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            ft.TextButton(
-                                "← Atras",
-                                on_click=self.cancel_click,
-                                style=ft.ButtonStyle(color="#FFFFFF")
-                            ),
-                            ft.Text(
-                                "Nuevo " + self.color_scheme["title"],
-                                size=20,
-                                weight=ft.FontWeight.W_500,
-                                color="#FFFFFF",
-                                expand=True,
-                                text_align=ft.TextAlign.CENTER
-                            ),
-                            ft.Container(width=80)  # Espaciador
-                        ]
-                    ),
-                    padding=ft.padding.all(20),
-                    gradient=ft.LinearGradient(
-                        begin=ft.alignment.center_left,
-                        end=ft.alignment.center_right,
-                        colors=["#667EEA", "#764BA2"]
-                    )
-                ),
+                header,
 
-                # Contenido principal
+                # Contenido principal con tema
                 ft.Container(
                     content=ft.Column(
                         [
                             ft.Container(height=30),
 
-                            # Título
-                            ft.Text(
-                                f"Crear {self.color_scheme['title'].lower()}",
-                                size=24,
-                                weight=ft.FontWeight.W_600,
-                                color=self.color_scheme["main"],
-                                text_align=ft.TextAlign.CENTER
+                            # Título con icono temático
+                            ft.Row(
+                                [
+                                    ft.Text(
+                                        self.icon,
+                                        size=32,
+                                        color=self.main_color
+                                    ),
+                                    ft.Container(width=12),
+                                    ft.Text(
+                                        f"Crear {self.title.lower()}",
+                                        size=24,
+                                        weight=ft.FontWeight.W_600,
+                                        color=self.main_color
+                                    )
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER
                             ),
 
                             ft.Container(height=30),
 
-                            # Formulario principal
-                            ft.Container(
+                            # Formulario principal con tema
+                            create_themed_container(
                                 content=ft.Column(
                                     [
                                         # Fila: Emoji + Nombre
@@ -170,35 +168,34 @@ class NewTagScreen:
                                                     height=50,
                                                     on_click=self.cancel_click,
                                                     style=ft.ButtonStyle(
-                                                        bgcolor="#F1F5F9",
-                                                        color=ZenColors.text_secondary,
+                                                        bgcolor=self.theme.surface_variant,
+                                                        color=self.theme.text_secondary,
                                                         shape=ft.RoundedRectangleBorder(radius=12)
                                                     )
                                                 ),
                                                 ft.Container(expand=True),
                                                 ft.ElevatedButton(
-                                                    "Guardar Momento",
+                                                    f"{self.icon} Guardar Momento",
                                                     width=180,
                                                     height=50,
                                                     on_click=self.save_click,
                                                     style=ft.ButtonStyle(
-                                                        bgcolor=self.color_scheme["main"],
+                                                        bgcolor=self.main_color,
                                                         color="#FFFFFF",
                                                         text_style=ft.TextStyle(
                                                             weight=ft.FontWeight.BOLD,
                                                             size=16
                                                         ),
-                                                        shape=ft.RoundedRectangleBorder(radius=12)
+                                                        shape=ft.RoundedRectangleBorder(radius=12),
+                                                        elevation=4
                                                     )
                                                 )
                                             ]
                                         )
                                     ]
                                 ),
-                                padding=ft.padding.all(24),
-                                bgcolor=ZenColors.surface,
-                                border_radius=16,
-                                border=ft.border.all(1, "#E2E8F0")
+                                theme=self.theme,
+                                border_radius=20
                             ),
 
                             ft.Container(height=40)
@@ -210,7 +207,7 @@ class NewTagScreen:
                     expand=True
                 )
             ],
-            bgcolor=ZenColors.background,
+            bgcolor=self.theme.primary_bg,
             padding=0,
             spacing=0
         )
@@ -225,7 +222,7 @@ class NewTagScreen:
             errors.append("Escribe un nombre para el momento")
 
         if not self.reason_field.value or not self.reason_field.value.strip():
-            errors.append("Describe que paso exactamente")
+            errors.append("Describe qué pasó exactamente")
 
         # El emoji es opcional, si no hay emoji usamos uno por defecto
 
@@ -243,9 +240,9 @@ class NewTagScreen:
             return
 
         # Crear el tag
-        emoji = self.emoji_field.value.strip() if self.emoji_field.value else "⭐"
+        emoji = self.emoji_field.value.strip() if self.emoji_field.value else self.icon
         if not emoji:
-            emoji = "+" if self.tag_type == "positive" else "-"
+            emoji = "✨" if self.tag_type == "positive" else "💔"
 
         tag = SimpleTag(
             emoji=emoji,
@@ -254,14 +251,19 @@ class NewTagScreen:
             reason=self.reason_field.value.strip()
         )
 
+        print(f"🏷️ Tag creado: {tag.emoji} {tag.name} ({tag.category})")
+
         # Llamar callback si existe
         if self.on_tag_created:
             try:
                 self.on_tag_created(tag)
-                # NO navegar aquí, dejar que el callback maneje la navegación
                 self.show_success("Momento creado correctamente")
+                # Limpiar formulario
+                self.clear_form()
             except Exception as ex:
                 print(f"Error en callback: {ex}")
+                import traceback
+                traceback.print_exc()
                 self.show_error("Error al crear momento")
         else:
             self.show_success("Momento creado")
@@ -285,11 +287,11 @@ class NewTagScreen:
             self.page.update()
 
     def show_error(self, message):
-        """Mostrar mensaje de error"""
+        """Mostrar mensaje de error con tema"""
         if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
-                content=ft.Text(f"ERROR: {message}", color="#FFFFFF"),
-                bgcolor=ZenColors.negative_main,
+                content=ft.Text(f"❌ {message}", color="#FFFFFF"),
+                bgcolor=self.theme.negative_main,
                 duration=3000
             )
             self.page.overlay.append(snack)
@@ -299,11 +301,11 @@ class NewTagScreen:
             print(f"ERROR: {message}")
 
     def show_success(self, message):
-        """Mostrar mensaje de éxito"""
+        """Mostrar mensaje de éxito con tema"""
         if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
-                content=ft.Text(f"OK: {message}", color="#FFFFFF"),
-                bgcolor=ZenColors.positive_main,
+                content=ft.Text(f"✅ {message}", color="#FFFFFF"),
+                bgcolor=self.theme.positive_main,
                 duration=2000
             )
             self.page.overlay.append(snack)
