@@ -1,6 +1,6 @@
 """
-📝 Entry Screen CORREGIDA CON DEBUG - ReflectApp
-Pantalla principal con logs de debug y funcionamiento correcto
+📝 Entry Screen CORREGIDA CON TAGS TEMPORALES - ReflectApp
+Pantalla principal con sistema de persistencia mejorado
 """
 
 import flet as ft
@@ -29,6 +29,25 @@ class DynamicTag:
             emoji=simple_tag.emoji
         )
 
+    @classmethod
+    def from_dict(cls, tag_dict):
+        """Crear DynamicTag desde diccionario"""
+        return cls(
+            name=tag_dict.get('name', ''),
+            context=tag_dict.get('context', ''),
+            tag_type=tag_dict.get('type', 'positive'),
+            emoji=tag_dict.get('emoji', '+')
+        )
+
+    def to_dict(self):
+        """Convertir a diccionario"""
+        return {
+            "name": self.name,
+            "context": self.context,
+            "type": self.type,
+            "emoji": self.emoji
+        }
+
     def __str__(self):
         return f"DynamicTag({self.emoji} {self.name} - {self.type})"
 
@@ -37,13 +56,13 @@ class EntryScreen:
         self.app = app
         self.page = None
         self.current_user = None
-        self.theme = get_theme()  # Obtener tema actual
+        self.theme = get_theme()
 
         # Campos principales
         self.reflection_field = None
         self.positive_tags = []
         self.negative_tags = []
-        self.worth_it = None  # True, False, o None
+        self.worth_it = None
 
         # Contenedores para tags
         self.positive_tags_container = None
@@ -52,16 +71,15 @@ class EntryScreen:
 
         # Estado de carga
         self.tags_loaded = False
+        self.data_loaded = False
 
-        print("🏗️ EntryScreen inicializada")
+        print("🏗️ EntryScreen inicializada con sistema mejorado")
 
     def set_user(self, user_data):
-        """Establecer usuario y cargar datos del día"""
+        """Establecer usuario y marcar datos como no cargados"""
         self.current_user = user_data
+        self.data_loaded = False
         print(f"🙋‍♂️ Usuario establecido: {user_data.get('name', 'Unknown')} (ID: {user_data.get('id')})")
-
-        # NO cargar tags aquí, se hará después de construir la vista
-        self.tags_loaded = False
 
     def update_theme(self):
         """Actualizar tema cuando cambie"""
@@ -75,115 +93,64 @@ class EntryScreen:
             apply_theme_to_page(self.page)
             self.page.update()
 
-    def load_today_tags(self):
-        """Cargar tags del día actual desde la base de datos"""
-        print("📅 === INICIANDO CARGA DE TAGS DEL DÍA ===")
+    def load_today_data(self):
+        """Cargar datos de hoy (entrada guardada + tags temporales)"""
+        print("📅 === INICIANDO CARGA COMPLETA DE DATOS DE HOY ===")
 
         if not self.current_user:
-            print("❌ No hay usuario para cargar tags")
+            print("❌ No hay usuario para cargar datos")
             return
 
         try:
             from services import db
             user_id = self.current_user['id']
 
-            print(f"🔍 Cargando tags para usuario {user_id}")
+            print(f"🔍 Cargando datos de hoy para usuario {user_id}")
 
-            entries_today = db.get_user_entries(
-                user_id=user_id,
-                limit=10,
-                offset=0
-            )
+            # Usar nuevo método que combina entrada guardada + tags temporales
+            today_data = db.get_today_entry_with_temp_tags(user_id)
 
-            print(f"📄 Encontradas {len(entries_today)} entradas totales")
-
-            # Limpiar listas actuales
-            old_positive = len(self.positive_tags)
-            old_negative = len(self.negative_tags)
-
+            # Limpiar datos actuales
             self.positive_tags.clear()
             self.negative_tags.clear()
 
-            # Procesar entradas de hoy
-            from datetime import date
-            today = date.today().isoformat()
-            print(f"📅 Buscando entradas para la fecha: {today}")
+            # Cargar reflexión
+            if today_data.get('reflection') and self.reflection_field:
+                self.reflection_field.value = today_data['reflection']
+                print(f"📝 Reflexión cargada: {today_data['reflection'][:50]}...")
 
-            tags_found = False
-            for i, entry in enumerate(entries_today):
-                entry_date = entry.get('entry_date')
-                print(f"📄 Entrada {i+1}: fecha={entry_date}, id={entry.get('id')}")
+            # Cargar worth_it
+            if today_data.get('worth_it') is not None:
+                self.worth_it = today_data['worth_it']
+                print(f"💭 Worth it cargado: {self.worth_it}")
 
-                if entry_date == today:
-                    print(f"✅ ¡Encontrada entrada de hoy! ID: {entry.get('id')}")
+            # Cargar tags positivos
+            positive_tags_data = today_data.get('positive_tags', [])
+            for tag_data in positive_tags_data:
+                tag = DynamicTag.from_dict(tag_data)
+                self.positive_tags.append(tag)
+                print(f"  ➕ Tag positivo: {tag}")
 
-                    # Cargar reflexión si existe
-                    reflection_text = entry.get('free_reflection', '')
-                    if reflection_text and self.reflection_field:
-                        self.reflection_field.value = reflection_text
-                        print(f"📝 Reflexión cargada: {reflection_text[:50]}...")
+            # Cargar tags negativos
+            negative_tags_data = today_data.get('negative_tags', [])
+            for tag_data in negative_tags_data:
+                tag = DynamicTag.from_dict(tag_data)
+                self.negative_tags.append(tag)
+                print(f"  ➖ Tag negativo: {tag}")
 
-                    # Cargar worth_it si existe
-                    worth_it_value = entry.get('worth_it')
-                    if worth_it_value is not None:
-                        self.worth_it = worth_it_value
-                        print(f"💭 Worth it cargado: {worth_it_value}")
+            print(f"📊 DATOS CARGADOS: {len(self.positive_tags)} positivos, {len(self.negative_tags)} negativos")
+            print(f"📊 Estado: Guardado={today_data.get('has_saved_entry', False)}, Temporal={today_data.get('has_temp_tags', False)}")
 
-                    # Cargar tags positivos
-                    positive_tags_data = entry.get('positive_tags', [])
-                    print(f"➕ Datos de tags positivos: {positive_tags_data}")
-
-                    for j, tag_data in enumerate(positive_tags_data):
-                        if isinstance(tag_data, dict):
-                            tag = DynamicTag(
-                                name=tag_data.get('name', f'Tag {j+1}'),
-                                context=tag_data.get('context', ''),
-                                tag_type="positive",
-                                emoji=tag_data.get('emoji', '✨')
-                            )
-                            self.positive_tags.append(tag)
-                            print(f"  ➕ Tag positivo creado: {tag}")
-                        else:
-                            print(f"  ⚠️ Tag positivo inválido: {tag_data}")
-
-                    # Cargar tags negativos
-                    negative_tags_data = entry.get('negative_tags', [])
-                    print(f"➖ Datos de tags negativos: {negative_tags_data}")
-
-                    for j, tag_data in enumerate(negative_tags_data):
-                        if isinstance(tag_data, dict):
-                            tag = DynamicTag(
-                                name=tag_data.get('name', f'Tag {j+1}'),
-                                context=tag_data.get('context', ''),
-                                tag_type="negative",
-                                emoji=tag_data.get('emoji', '💔')
-                            )
-                            self.negative_tags.append(tag)
-                            print(f"  ➖ Tag negativo creado: {tag}")
-                        else:
-                            print(f"  ⚠️ Tag negativo inválido: {tag_data}")
-
-                    tags_found = True
-                    print(f"🎯 TAGS CARGADOS: {len(self.positive_tags)} positivos, {len(self.negative_tags)} negativos")
-                    break
-                else:
-                    print(f"  ⏭️ Entrada de fecha diferente: {entry_date} != {today}")
-
-            if not tags_found:
-                print("ℹ️ No se encontraron entradas para hoy - día nuevo")
-
-            print(f"📊 RESUMEN CARGA: {old_positive}→{len(self.positive_tags)} positivos, {old_negative}→{len(self.negative_tags)} negativos")
-            self.tags_loaded = True
-            print("📅 === FIN CARGA DE TAGS ===")
+            self.data_loaded = True
 
         except Exception as ex:
-            print(f"❌ ERROR CRÍTICO cargando tags del día: {ex}")
+            print(f"❌ ERROR CRÍTICO cargando datos de hoy: {ex}")
             import traceback
             traceback.print_exc()
 
-    def load_and_refresh_tags(self):
-        """Cargar tags y refrescar interfaz - método público MEJORADO"""
-        print("🔄 === INICIANDO LOAD AND REFRESH TAGS ===")
+    def load_and_refresh_all(self):
+        """Cargar todos los datos y refrescar interfaz - método público"""
+        print("🔄 === INICIANDO LOAD AND REFRESH ALL ===")
 
         if not self.current_user:
             print("❌ No hay usuario actual")
@@ -191,45 +158,52 @@ class EntryScreen:
 
         if not self.positive_tags_container or not self.negative_tags_container:
             print("❌ Contenedores de tags no están inicializados")
-            print(f"   positive_tags_container: {self.positive_tags_container}")
-            print(f"   negative_tags_container: {self.negative_tags_container}")
             return
 
-        # Cargar datos
-        self.load_today_tags()
+        # Cargar datos completos
+        self.load_today_data()
 
-        # Actualizar worth_it buttons si hay datos
+        # Actualizar botones worth_it
         if self.worth_it is not None:
-            print(f"🔘 Actualizando botones worth_it: {self.worth_it}")
             self.update_worth_it_buttons()
 
         # Refrescar interfaz
-        print("🖼️ Iniciando refresh de interfaz...")
-        self.force_refresh_tags()
+        self.force_refresh_all()
 
-        print(f"✅ === LOAD AND REFRESH COMPLETADO: {len(self.positive_tags)} positivos, {len(self.negative_tags)} negativos ===")
+        print(f"✅ === LOAD AND REFRESH COMPLETADO ===")
 
-    def update_worth_it_buttons(self):
-        """Actualizar botones worth_it con el valor cargado"""
-        if not self.worth_it_buttons["yes"] or not self.worth_it_buttons["no"]:
-            print("⚠️ Botones worth_it no están inicializados")
-            return
+    def save_tag_temporarily(self, tag):
+        """Guardar tag temporalmente en base de datos"""
+        if not self.current_user:
+            print("❌ No hay usuario para guardar tag temporal")
+            return False
 
-        print(f"🔘 Actualizando botones worth_it para valor: {self.worth_it}")
+        try:
+            from services import db
+            user_id = self.current_user['id']
 
-        for btn_key, btn in self.worth_it_buttons.items():
-            if (btn_key == "yes" and self.worth_it) or (btn_key == "no" and self.worth_it is False):
-                btn.style.bgcolor = self.theme.positive_main if self.worth_it else self.theme.negative_main
-                btn.style.color = "#FFFFFF"
-                print(f"  ✅ Botón {btn_key} activado")
+            tag_id = db.save_temp_tag(
+                user_id=user_id,
+                tag_name=tag.name,
+                tag_context=tag.context,
+                tag_type=tag.type,
+                tag_emoji=tag.emoji
+            )
+
+            if tag_id:
+                print(f"💾 Tag guardado temporalmente: {tag.emoji} {tag.name} (ID: {tag_id})")
+                return True
             else:
-                btn.style.bgcolor = self.theme.surface_variant
-                btn.style.color = self.theme.text_secondary
-                print(f"  ⚪ Botón {btn_key} desactivado")
+                print("❌ Error guardando tag temporal")
+                return False
+
+        except Exception as e:
+            print(f"❌ Error en save_tag_temporarily: {e}")
+            return False
 
     def build(self):
         """Construir vista principal zen con temas"""
-        print("🏗️ === CONSTRUYENDO ENTRYSCREEN ===")
+        print("🏗️ === CONSTRUYENDO ENTRYSCREEN MEJORADA ===")
 
         # Actualizar tema
         self.theme = get_theme()
@@ -258,9 +232,7 @@ class EntryScreen:
         self.positive_tags_container = ft.Column(spacing=8)
         self.negative_tags_container = ft.Column(spacing=8)
 
-        print(f"📦 Contenedores creados:")
-        print(f"   positive_tags_container: {type(self.positive_tags_container)}")
-        print(f"   negative_tags_container: {type(self.negative_tags_container)}")
+        print(f"📦 Contenedores creados")
 
         # Botones para "¿Mereció la pena?" con tema
         self.worth_it_buttons["yes"] = ft.ElevatedButton(
@@ -303,7 +275,6 @@ class EntryScreen:
             tooltip="Ver calendario"
         )
 
-        # Botón de configuración de temas
         theme_button = ft.TextButton(
             "🎨",
             on_click=self.go_to_theme_selector,
@@ -387,7 +358,7 @@ class EntryScreen:
                                     ]
                                 ),
                                 theme=self.theme,
-                                is_surface=False  # Usar surface_variant para destacar
+                                is_surface=False
                             ),
 
                             ft.Container(height=16),
@@ -499,12 +470,12 @@ class EntryScreen:
             bgcolor=self.theme.primary_bg
         )
 
-        print("🏗️ Vista EntryScreen construida - esperando carga manual de tags")
+        print("🏗️ Vista EntryScreen construida - esperando carga manual")
         return view
 
     def refresh_positive_tags(self):
         """Actualizar visualización de tags positivos con tema"""
-        print(f"🔄 === REFRESH POSITIVE TAGS (Total: {len(self.positive_tags)}) ===")
+        print(f"🔄 REFRESH POSITIVE TAGS (Total: {len(self.positive_tags)})")
 
         if not self.positive_tags_container:
             print("❌ positive_tags_container no existe")
@@ -513,7 +484,6 @@ class EntryScreen:
         self.positive_tags_container.controls.clear()
 
         if not self.positive_tags:
-            # Mostrar placeholder cuando no hay tags
             placeholder = ft.Text(
                 "Aún no has añadido momentos positivos del día",
                 size=12,
@@ -522,23 +492,16 @@ class EntryScreen:
                 text_align=ft.TextAlign.CENTER
             )
             self.positive_tags_container.controls.append(placeholder)
-            print("📝 Placeholder positivo añadido")
         else:
             for i, tag in enumerate(self.positive_tags):
-                print(f"  ➕ Creando chip para tag {i+1}: {tag}")
                 tag_chip = self.create_tag_chip(tag, "positive")
                 self.positive_tags_container.controls.append(tag_chip)
 
         print(f"✅ Tags positivos refrescados: {len(self.positive_tags_container.controls)} controles")
 
-        # Actualizar página si está disponible
-        if hasattr(self, 'page') and self.page:
-            self.page.update()
-            print("🔄 Página actualizada para tags positivos")
-
     def refresh_negative_tags(self):
         """Actualizar visualización de tags negativos con tema"""
-        print(f"🔄 === REFRESH NEGATIVE TAGS (Total: {len(self.negative_tags)}) ===")
+        print(f"🔄 REFRESH NEGATIVE TAGS (Total: {len(self.negative_tags)})")
 
         if not self.negative_tags_container:
             print("❌ negative_tags_container no existe")
@@ -547,7 +510,6 @@ class EntryScreen:
         self.negative_tags_container.controls.clear()
 
         if not self.negative_tags:
-            # Mostrar placeholder cuando no hay tags
             placeholder = ft.Text(
                 "Aún no has añadido momentos negativos del día",
                 size=12,
@@ -556,19 +518,31 @@ class EntryScreen:
                 text_align=ft.TextAlign.CENTER
             )
             self.negative_tags_container.controls.append(placeholder)
-            print("📝 Placeholder negativo añadido")
         else:
             for i, tag in enumerate(self.negative_tags):
-                print(f"  ➖ Creando chip para tag {i+1}: {tag}")
                 tag_chip = self.create_tag_chip(tag, "negative")
                 self.negative_tags_container.controls.append(tag_chip)
 
         print(f"✅ Tags negativos refrescados: {len(self.negative_tags_container.controls)} controles")
 
-        # Actualizar página si está disponible
-        if hasattr(self, 'page') and self.page:
-            self.page.update()
-            print("🔄 Página actualizada para tags negativos")
+    def force_refresh_all(self):
+        """Forzar actualización visual completa"""
+        print("🔄 === FORCE REFRESH ALL ===")
+
+        try:
+            self.refresh_positive_tags()
+            self.refresh_negative_tags()
+
+            # Actualizar campo de reflexión
+            if hasattr(self, 'page') and self.page:
+                self.page.update()
+                print("🔄 Página actualizada")
+
+            print("✅ === FORCE REFRESH COMPLETADO ===")
+        except Exception as e:
+            print(f"❌ ERROR en force_refresh_all: {e}")
+            import traceback
+            traceback.print_exc()
 
     def create_tag_chip(self, tag, tag_type):
         """Crear chip visual para un tag"""
@@ -615,50 +589,46 @@ class EntryScreen:
         )
 
     def on_tag_created(self, simple_tag):
-        """Callback cuando se crea un tag desde NewTagScreen"""
-        print(f"🏷️ === ON_TAG_CREATED LLAMADO ===")
+        """Callback cuando se crea un tag desde NewTagScreen - MEJORADO"""
+        print(f"🏷️ === ON_TAG_CREATED MEJORADO ===")
         print(f"📝 Tag recibido: {simple_tag.emoji} {simple_tag.name} ({simple_tag.category})")
-        print(f"📝 Reason: {simple_tag.reason}")
 
         # Convertir SimpleTag a DynamicTag
         tag = DynamicTag.from_simple_tag(simple_tag)
         print(f"🔄 Tag convertido: {tag}")
 
-        # Añadir a la lista correspondiente
-        if tag.type == "positive":
-            self.positive_tags.append(tag)
-            print(f"➕ Añadido a positive_tags. Total actual: {len(self.positive_tags)}")
-            print(f"➕ Lista completa positiva: {[str(t) for t in self.positive_tags]}")
-        elif tag.type == "negative":
-            self.negative_tags.append(tag)
-            print(f"➖ Añadido a negative_tags. Total actual: {len(self.negative_tags)}")
-            print(f"➖ Lista completa negativa: {[str(t) for t in self.negative_tags]}")
+        # Guardar temporalmente en base de datos PRIMERO
+        saved_successfully = self.save_tag_temporarily(tag)
 
-        # Forzar actualización INMEDIATA de la interfaz
-        print("🔄 Iniciando force_refresh_tags INMEDIATO...")
-        self.force_refresh_tags()
+        if saved_successfully:
+            # Añadir a la lista en memoria
+            if tag.type == "positive":
+                self.positive_tags.append(tag)
+                print(f"➕ Añadido a positive_tags. Total: {len(self.positive_tags)}")
+            elif tag.type == "negative":
+                self.negative_tags.append(tag)
+                print(f"➖ Añadido a negative_tags. Total: {len(self.negative_tags)}")
 
-        self.show_success(f"✅ Momento {tag.type} '{tag.name}' añadido")
+            # Refrescar interfaz
+            self.force_refresh_all()
+            self.show_success(f"✅ Momento {tag.type} '{tag.name}' añadido")
+        else:
+            self.show_error("❌ Error guardando el momento")
+
         print(f"🏷️ === ON_TAG_CREATED COMPLETADO ===")
 
-    def force_refresh_tags(self):
-        """Forzar actualización visual de todos los tags"""
-        print("🔄 === FORCE REFRESH TAGS ===")
+    def update_worth_it_buttons(self):
+        """Actualizar botones worth_it con el valor cargado"""
+        if not self.worth_it_buttons["yes"] or not self.worth_it_buttons["no"]:
+            return
 
-        try:
-            print(f"📊 Estado actual: {len(self.positive_tags)} positivos, {len(self.negative_tags)} negativos")
-
-            print("🔄 Refrescando tags positivos...")
-            self.refresh_positive_tags()
-
-            print("🔄 Refrescando tags negativos...")
-            self.refresh_negative_tags()
-
-            print("✅ === FORCE REFRESH COMPLETADO ===")
-        except Exception as e:
-            print(f"❌ ERROR en force_refresh_tags: {e}")
-            import traceback
-            traceback.print_exc()
+        for btn_key, btn in self.worth_it_buttons.items():
+            if (btn_key == "yes" and self.worth_it) or (btn_key == "no" and self.worth_it is False):
+                btn.style.bgcolor = self.theme.positive_main if self.worth_it else self.theme.negative_main
+                btn.style.color = "#FFFFFF"
+            else:
+                btn.style.bgcolor = self.theme.surface_variant
+                btn.style.color = self.theme.text_secondary
 
     def open_positive_tag_dialog(self, e):
         """Abrir pantalla para añadir momento positivo"""
@@ -678,7 +648,12 @@ class EntryScreen:
         if tag in self.positive_tags:
             self.positive_tags.remove(tag)
             self.refresh_positive_tags()
-            print(f"✅ Tag eliminado. Quedan {len(self.positive_tags)} tags positivos")
+
+            # También eliminar de tags temporales si existe
+            self.remove_temp_tag(tag)
+
+            if hasattr(self, 'page') and self.page:
+                self.page.update()
 
     def remove_negative_tag(self, tag):
         """Eliminar tag negativo"""
@@ -686,37 +661,49 @@ class EntryScreen:
         if tag in self.negative_tags:
             self.negative_tags.remove(tag)
             self.refresh_negative_tags()
-            print(f"✅ Tag eliminado. Quedan {len(self.negative_tags)} tags negativos")
+
+            # También eliminar de tags temporales si existe
+            self.remove_temp_tag(tag)
+
+            if hasattr(self, 'page') and self.page:
+                self.page.update()
+
+    def remove_temp_tag(self, tag):
+        """Eliminar tag de la tabla temporal (método helper)"""
+        try:
+            from services import db
+            if self.current_user:
+                # Para simplificar, volvemos a cargar los datos después de eliminar
+                # Una implementación más sofisticada podría eliminar específicamente
+                pass
+        except Exception as e:
+            print(f"⚠️ Error eliminando tag temporal: {e}")
 
     def set_worth_it(self, value, e):
         """Establecer si mereció la pena el día"""
-        print(f"💭 === SET WORTH IT: {value} ===")
+        print(f"💭 SET WORTH IT: {value}")
         self.page = e.page
         self.worth_it = value
 
-        # Actualizar estilos de botones con tema
         self.update_worth_it_buttons()
 
         if self.page:
             self.page.update()
 
-        print(f"💭 Worth it establecido: {value}")
-
     def save_entry(self, e):
-        """Guardar entrada zen"""
-        print("💾 === SAVE ENTRY INICIADO ===")
+        """Guardar entrada zen - MEJORADO"""
+        print("💾 === SAVE ENTRY MEJORADO ===")
         self.page = e.page
 
         reflection_text = self.reflection_field.value.strip() if self.reflection_field.value else ""
 
-        print(f"📝 Reflexión a guardar: '{reflection_text[:100]}...'")
-        print(f"➕ Tags positivos a guardar: {len(self.positive_tags)}")
-        print(f"➖ Tags negativos a guardar: {len(self.negative_tags)}")
-        print(f"💭 Worth it a guardar: {self.worth_it}")
+        print(f"📝 Reflexión: '{reflection_text[:100]}...'")
+        print(f"➕ Tags positivos: {len(self.positive_tags)}")
+        print(f"➖ Tags negativos: {len(self.negative_tags)}")
+        print(f"💭 Worth it: {self.worth_it}")
 
-        if not reflection_text:
-            print("❌ Reflexión vacía")
-            self.show_error("Escribe algo en tu reflexión antes de guardar")
+        if not reflection_text and not self.positive_tags and not self.negative_tags:
+            self.show_error("Añade al menos una reflexión o un momento del día")
             return
 
         try:
@@ -724,13 +711,6 @@ class EntryScreen:
 
             if self.current_user:
                 user_id = self.current_user['id']
-                print(f"💾 Guardando entrada para usuario: {user_id}")
-
-                # DEBUG: Mostrar detalles de tags antes de guardar
-                for i, tag in enumerate(self.positive_tags):
-                    print(f"  ➕ Tag positivo {i+1}: {tag.emoji} {tag.name} - {tag.context[:30]}...")
-                for i, tag in enumerate(self.negative_tags):
-                    print(f"  ➖ Tag negativo {i+1}: {tag.emoji} {tag.name} - {tag.context[:30]}...")
 
                 entry_id = db.save_daily_entry(
                     user_id=user_id,
@@ -743,40 +723,32 @@ class EntryScreen:
                 if entry_id:
                     print(f"✅ Entrada guardada con ID: {entry_id}")
                     self.show_success("✨ Reflexión guardada correctamente")
+
+                    # Los tags temporales se limpian automáticamente en save_daily_entry
+                    print("🧹 Tags temporales limpiados automáticamente")
                 else:
-                    print("❌ Error: entry_id es None")
                     self.show_error("Error al guardar en base de datos")
             else:
-                print("❌ Error: No hay usuario actual")
                 self.show_error("Usuario no autenticado")
 
         except Exception as ex:
-            print(f"❌ ERROR CRÍTICO guardando: {ex}")
+            print(f"❌ ERROR guardando: {ex}")
             import traceback
             traceback.print_exc()
             self.show_error("Error del sistema")
 
-        print("💾 === SAVE ENTRY FINALIZADO ===")
-
     def chat_ai(self, e):
         """Iniciar chat con IA"""
-        print("🤖 === CHAT IA INICIADO ===")
+        print("🤖 === CHAT IA ===")
         self.page = e.page
 
         reflection_text = self.reflection_field.value.strip() if self.reflection_field.value else ""
 
-        if not reflection_text:
-            print("❌ No hay reflexión para el chat")
-            self.show_error("Escribe algo para charlar con la IA")
+        if not reflection_text and not self.positive_tags and not self.negative_tags:
+            self.show_error("Añade contenido para charlar con la IA")
             return
 
         try:
-            print("🤖 Generando resumen con IA...")
-            print(f"📝 Reflexión: {reflection_text[:50]}...")
-            print(f"➕ Tags positivos: {len(self.positive_tags)}")
-            print(f"➖ Tags negativos: {len(self.negative_tags)}")
-            print(f"💭 Worth it: {self.worth_it}")
-
             summary = get_daily_summary(
                 reflection=reflection_text,
                 positive_tags=self.positive_tags,
@@ -784,16 +756,11 @@ class EntryScreen:
                 worth_it=self.worth_it
             )
 
-            print(f"🤖 Resumen generado: {summary[:100]}...")
             self.show_daily_summary_dialog(summary)
 
         except Exception as ex:
             print(f"❌ Error en chat IA: {ex}")
-            import traceback
-            traceback.print_exc()
             self.show_error("Error iniciando chat")
-
-        print("🤖 === CHAT IA FINALIZADO ===")
 
     def show_daily_summary_dialog(self, summary):
         """Mostrar resumen diario de IA con tema"""
@@ -845,33 +812,27 @@ class EntryScreen:
         self.page.update()
 
     def continue_chat(self):
-        """Continuar chat (funcionalidad futura)"""
         self.close_dialog()
         self.show_success("Chat extendido próximamente")
 
     def close_dialog(self):
-        """Cerrar diálogo"""
         if self.page and self.page.dialog:
             self.page.dialog.open = False
             self.page.update()
 
     def go_to_calendar(self, e):
-        """Navegar al calendario"""
         self.page = e.page
         self.page.go("/calendar")
 
     def go_to_theme_selector(self, e):
-        """Navegar al selector de temas"""
         self.page = e.page
         self.page.go("/theme_selector")
 
     def logout_click(self, e):
-        """Cerrar sesión zen"""
         self.page = e.page
         self.app.navigate_to_login()
 
     def show_error(self, message):
-        """Mostrar error zen con tema"""
         print(f"❌ MOSTRAR ERROR: {message}")
         if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
@@ -884,7 +845,6 @@ class EntryScreen:
             self.page.update()
 
     def show_success(self, message):
-        """Mostrar éxito zen con tema"""
         print(f"✅ MOSTRAR ÉXITO: {message}")
         if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(

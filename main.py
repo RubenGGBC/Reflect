@@ -1,12 +1,12 @@
 """
-🌙 ReflectApp - Sistema de Temas Profesional CORREGIDO CON DEBUG
-Aplicación principal con logs de debug completos
+🌙 ReflectApp - VERSIÓN CORREGIDA CON TAGS TEMPORALES
+Aplicación principal con sistema mejorado de persistencia
 """
 
 import flet as ft
 from screens.login_screen import LoginScreen
 from screens.register_screen import RegisterScreen
-from screens.update_entry_screen import EntryScreen
+from screens.update_entry_screen import EntryScreen  # Usar versión corregida
 from screens.new_tag_screen import NewTagScreen
 from screens.calendar_screen import CalendarScreen
 from screens.day_details_screen import DayDetailsScreen
@@ -17,7 +17,7 @@ from services.reflect_themes_system import (
 )
 
 class ReflectApp:
-    """Aplicación principal con sistema de temas profesional CORREGIDO CON DEBUG"""
+    """Aplicación principal CORREGIDA con sistema de tags temporales"""
 
     def __init__(self):
         self.current_user = None
@@ -36,12 +36,12 @@ class ReflectApp:
         self.current_day_details = None
         self.page = None
 
-        print("🚀 ReflectApp inicializada")
+        print("🚀 ReflectApp CORREGIDA inicializada")
 
     def main(self, page: ft.Page):
         """Inicializar aplicación principal"""
         self.page = page
-        print("🚀 === MAIN APP INICIADA ===")
+        print("🚀 === MAIN APP CORREGIDA INICIADA ===")
 
         # Configuración zen de la página
         page.title = "ReflectApp - Tu espacio de reflexión"
@@ -120,7 +120,7 @@ class ReflectApp:
         print("🏗️ Inicializando pantallas...")
         self.login_screen = LoginScreen(self)
         self.register_screen = RegisterScreen(self)
-        self.entry_screen = EntryScreen(self)
+        self.entry_screen = EntryScreen(self)  # Usar versión corregida
         print("✅ Pantallas inicializadas")
 
     def apply_current_theme(self):
@@ -180,8 +180,8 @@ class ReflectApp:
                 self.update_control_theme(control.content, theme)
 
     def handle_entry_route(self, page):
-        """Manejar ruta de entry CORREGIDA CON DEBUG"""
-        print("📖 === HANDLE ENTRY ROUTE ===")
+        """Manejar ruta de entry CORREGIDA"""
+        print("📖 === HANDLE ENTRY ROUTE CORREGIDA ===")
 
         if not self.entry_screen:
             print("🏗️ Creando nueva EntryScreen")
@@ -190,7 +190,7 @@ class ReflectApp:
             print("♻️ Reutilizando EntryScreen existente")
 
         self.entry_screen.page = page
-        self.entry_screen.update_theme()  # Actualizar tema antes de construir
+        self.entry_screen.update_theme()
 
         # Si hay usuario, establecerlo
         if self.current_user:
@@ -205,21 +205,22 @@ class ReflectApp:
         page.update()  # Renderizar primero
         print("✅ Vista construida y renderizada")
 
-        # IMPORTANTE: Forzar carga de tags después de que la vista esté renderizada
+        # NUEVO SISTEMA: Cargar datos después del renderizado
         if self.current_user:
             try:
-                print("⏰ === EJECUTANDO CARGA DE TAGS DESPUÉS DEL RENDERIZADO ===")
-                self.entry_screen.load_and_refresh_tags()
-                print("✅ === CARGA DE TAGS COMPLETADA ===")
+                print("📅 === CARGANDO DATOS DE HOY ===")
+                # Usar el nuevo método que carga entrada + tags temporales
+                self.entry_screen.load_and_refresh_all()
+                print("✅ === CARGA DE DATOS COMPLETADA ===")
             except Exception as e:
-                print(f"❌ ERROR CRÍTICO cargando tags: {e}")
+                print(f"❌ ERROR CRÍTICO cargando datos: {e}")
                 import traceback
                 traceback.print_exc()
         else:
-            print("⚠️ No se cargan tags: sin usuario")
+            print("⚠️ No se cargan datos: sin usuario")
 
     def handle_new_tag_route(self, page):
-        """Manejar ruta de nuevo tag CON DEBUG"""
+        """Manejar ruta de nuevo tag"""
         print("🏷️ === HANDLE NEW TAG ROUTE ===")
 
         # Determinar tipo según parámetros
@@ -232,10 +233,9 @@ class ReflectApp:
         print(f"🏷️ Tipo de tag: {tag_type}")
 
         def on_tag_created_with_navigation(tag):
-            """Callback para crear tag con navegación CON DEBUG"""
+            """Callback para crear tag con navegación"""
             print(f"🏷️ === CALLBACK TAG CREATED ===")
-            print(f"📝 Tag recibido en callback: {tag.emoji} {tag.name} ({tag.category})")
-            print(f"📝 Razón: {tag.reason}")
+            print(f"📝 Tag recibido: {tag.emoji} {tag.name} ({tag.category})")
 
             if self.entry_screen:
                 print("📤 Enviando tag a EntryScreen...")
@@ -247,7 +247,6 @@ class ReflectApp:
 
             print("🛣️ Navegando de vuelta a /entry")
             page.go("/entry")
-            print(f"🏷️ === CALLBACK COMPLETADO ===")
 
         def on_cancel():
             """Callback para cancelar"""
@@ -262,7 +261,6 @@ class ReflectApp:
             on_cancel=on_cancel
         )
 
-        # Aplicar tema a la nueva pantalla
         view = self.new_tag_screen.build()
         self.apply_theme_to_view(view)
         page.views.append(view)
@@ -289,7 +287,6 @@ class ReflectApp:
         )
         self.calendar_screen.page = page
 
-        # Actualizar colores del calendario con tema actual
         self.update_calendar_theme()
 
         view = self.calendar_screen.build()
@@ -312,13 +309,12 @@ class ReflectApp:
                 on_go_back=on_go_back
             )
 
-            # Actualizar tema de la pantalla de detalles
             view = self.day_details_screen.build()
             self.apply_theme_to_view(view)
             page.views.append(view)
 
     def handle_theme_selector_route(self, page):
-        """Manejar ruta del selector de temas CORREGIDA"""
+        """Manejar ruta del selector de temas"""
         def on_theme_changed(theme_type):
             """Callback cuando cambia el tema"""
             print(f"🎨 Tema cambiado a: {theme_type}")
@@ -364,17 +360,13 @@ class ReflectApp:
     def force_page_refresh(self):
         """Forzar refresh completo de la página"""
         if self.page:
-            # Aplicar tema a la página
             self.apply_current_theme()
-
-            # Forzar actualización
             self.page.update()
 
     def update_calendar_theme(self):
         """Actualizar tema del calendario"""
         if hasattr(self.calendar_screen, 'ZenColors'):
             theme = get_theme()
-            # Actualizar colores del calendario dinámicamente
             self.calendar_screen.ZenColors.positive_main = theme.positive_main
             self.calendar_screen.ZenColors.negative_main = theme.negative_main
             self.calendar_screen.ZenColors.background = theme.primary_bg
@@ -412,8 +404,8 @@ class ReflectApp:
         self.page.update()
 
     def navigate_to_entry(self, user_data):
-        """Navegar a la pantalla de entrada CON DEBUG"""
-        print(f"🧭 === NAVIGATE TO ENTRY ===")
+        """Navegar a la pantalla de entrada"""
+        print(f"🧭 === NAVIGATE TO ENTRY CORREGIDA ===")
         print(f"👤 Usuario: {user_data.get('name')} (ID: {user_data.get('id')})")
 
         self.current_user = user_data
@@ -438,8 +430,8 @@ class ReflectApp:
             self.entry_screen.page.go("/login")
         print("✅ === NAVIGATE TO LOGIN COMPLETADO ===")
 
-def create_themed_app():
-    """Crear aplicación con temas profesionales"""
+def create_improved_app():
+    """Crear aplicación CORREGIDA con sistema mejorado"""
 
     def main(page: ft.Page):
         """Función principal de la aplicación"""
@@ -457,12 +449,12 @@ def create_themed_app():
         # Inicializar aplicación
         app.main(page)
 
-        print("🌙 ReflectApp iniciada con sistema de temas profesional CORREGIDO")
+        print("🌙 ReflectApp CORREGIDA iniciada con sistema mejorado")
         print(f"🎨 Tema inicial: {get_theme().display_name}")
 
     return main
 
 if __name__ == "__main__":
-    # Crear y ejecutar aplicación
-    app_main = create_themed_app()
+    # Crear y ejecutar aplicación corregida
+    app_main = create_improved_app()
     ft.app(target=app_main)
