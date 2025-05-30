@@ -1,3 +1,8 @@
+"""
+📝 New Tag Screen - TAMAÑOS CORREGIDOS
+Versión optimizada sin scroll
+"""
+
 import flet as ft
 from services.reflect_themes_system import get_theme, create_themed_container, create_gradient_header
 
@@ -11,12 +16,12 @@ class SimpleTag:
         self.type = category  # Para compatibilidad
 
 class NewTagScreen:
-    """Pantalla nueva para crear tags fácilmente CON TEMAS"""
+    """Pantalla nueva para crear tags - TAMAÑOS OPTIMIZADOS"""
 
     def __init__(self, tag_type="positive", on_tag_created=None, on_cancel=None):
-        self.tag_type = tag_type  # "positive" o "negative" - predefinido
-        self.on_tag_created = on_tag_created  # Callback cuando se crea tag
-        self.on_cancel = on_cancel  # Callback cuando se cancela
+        self.tag_type = tag_type
+        self.on_tag_created = on_tag_created
+        self.on_cancel = on_cancel
 
         # Campos del formulario
         self.emoji_field = None
@@ -32,7 +37,7 @@ class NewTagScreen:
 
     def setup_tag_config(self):
         """Configurar colores y textos según tipo de tag"""
-        self.theme = get_theme()  # Actualizar tema
+        self.theme = get_theme()
 
         if self.tag_type == "positive":
             self.main_color = self.theme.positive_main
@@ -46,29 +51,27 @@ class NewTagScreen:
             self.icon = "💔"
 
     def build(self):
-        """Construir la vista de la pantalla CON TEMAS"""
-        # Actualizar configuración con tema actual
+        """Construir la vista - TAMAÑOS OPTIMIZADOS"""
         self.setup_tag_config()
 
-        # Campo emoji con tema
+        # ✅ CAMPOS MÁS COMPACTOS
         self.emoji_field = ft.TextField(
             label="Emoji",
-            hint_text="😊 🎉 💪 😔 😰 etc...",
-            width=120,
+            hint_text="😊 🎉 💪 😔",
+            width=100,  # Era 120 → 100
             text_align=ft.TextAlign.CENTER,
-            text_style=ft.TextStyle(size=20, color=self.theme.text_primary),
-            border_radius=12,
+            text_style=ft.TextStyle(size=18, color=self.theme.text_primary),  # Era 20 → 18
+            border_radius=10,  # Era 12 → 10
             bgcolor=self.theme.surface,
             border_color=self.theme.border_color,
             focused_border_color=self.main_color,
             label_style=ft.TextStyle(color=self.theme.text_secondary)
         )
 
-        # Campo nombre con tema
         self.name_field = ft.TextField(
             label="Nombre del momento",
-            hint_text="Ej: Trabajo, Familia, Ejercicio...",
-            border_radius=12,
+            hint_text="Ej: Trabajo, Familia...",
+            border_radius=10,
             bgcolor=self.theme.surface,
             expand=True,
             border_color=self.theme.border_color,
@@ -77,14 +80,14 @@ class NewTagScreen:
             label_style=ft.TextStyle(color=self.theme.text_secondary)
         )
 
-        # Campo razón/motivo con tema
+        # ✅ CAMPO RAZÓN MÁS COMPACTO
         self.reason_field = ft.TextField(
-            label="¿Qué pasó exactamente?",
-            hint_text="Describe lo que ocurrió...",
+            label="¿Qué pasó?",
+            hint_text="Describe brevemente...",
             multiline=True,
-            min_lines=3,
-            max_lines=6,
-            border_radius=12,
+            min_lines=2,  # Era 3 → 2
+            max_lines=4,  # Era 6 → 4
+            border_radius=10,
             bgcolor=self.theme.surface,
             border_color=self.theme.border_color,
             focused_border_color=self.main_color,
@@ -92,44 +95,43 @@ class NewTagScreen:
             label_style=ft.TextStyle(color=self.theme.text_secondary)
         )
 
-        # Botón volver para header
+        # Header
         back_button = ft.TextButton(
             "← Atrás",
             on_click=self.cancel_click,
             style=ft.ButtonStyle(color="#FFFFFF")
         )
 
-        # Header con gradiente temático
         header = create_gradient_header(
             title=f"Nuevo {self.title}",
             left_button=back_button,
             theme=self.theme
         )
 
-        # Vista principal
+        # ✅ VISTA OPTIMIZADA SIN SCROLL
         view = ft.View(
             "/new_tag",
             [
                 header,
 
-                # Contenido principal con tema
+                # Contenido principal MÁS COMPACTO
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Container(height=30),
+                            ft.Container(height=16),  # Era 30 → 16
 
-                            # Título con icono temático
+                            # Título más compacto
                             ft.Row(
                                 [
                                     ft.Text(
                                         self.icon,
-                                        size=32,
+                                        size=24,  # Era 32 → 24
                                         color=self.main_color
                                     ),
-                                    ft.Container(width=12),
+                                    ft.Container(width=8),  # Era 12 → 8
                                     ft.Text(
                                         f"Crear {self.title.lower()}",
-                                        size=24,
+                                        size=20,  # Era 24 → 20
                                         weight=ft.FontWeight.W_600,
                                         color=self.main_color
                                     )
@@ -137,9 +139,9 @@ class NewTagScreen:
                                 alignment=ft.MainAxisAlignment.CENTER
                             ),
 
-                            ft.Container(height=30),
+                            ft.Container(height=20),  # Era 30 → 20
 
-                            # Formulario principal con tema
+                            # Formulario más compacto
                             create_themed_container(
                                 content=ft.Column(
                                     [
@@ -147,47 +149,47 @@ class NewTagScreen:
                                         ft.Row(
                                             [
                                                 self.emoji_field,
-                                                ft.Container(width=16),
+                                                ft.Container(width=12),
                                                 self.name_field
                                             ]
                                         ),
 
-                                        ft.Container(height=20),
+                                        ft.Container(height=16),  # Era 20 → 16
 
                                         # Campo razón
                                         self.reason_field,
 
-                                        ft.Container(height=30),
+                                        ft.Container(height=20),  # Era 30 → 20
 
-                                        # Botones de acción
+                                        # Botones más compactos
                                         ft.Row(
                                             [
                                                 ft.ElevatedButton(
                                                     "Cancelar",
-                                                    width=120,
-                                                    height=50,
+                                                    width=100,  # Era 120 → 100
+                                                    height=44,  # Era 50 → 44
                                                     on_click=self.cancel_click,
                                                     style=ft.ButtonStyle(
                                                         bgcolor=self.theme.surface_variant,
                                                         color=self.theme.text_secondary,
-                                                        shape=ft.RoundedRectangleBorder(radius=12)
+                                                        shape=ft.RoundedRectangleBorder(radius=10)
                                                     )
                                                 ),
                                                 ft.Container(expand=True),
                                                 ft.ElevatedButton(
-                                                    f"{self.icon} Guardar Momento",
-                                                    width=180,
-                                                    height=50,
+                                                    f"{self.icon} Guardar",
+                                                    width=160,  # Era 180 → 160
+                                                    height=44,  # Era 50 → 44
                                                     on_click=self.save_click,
                                                     style=ft.ButtonStyle(
                                                         bgcolor=self.main_color,
                                                         color="#FFFFFF",
                                                         text_style=ft.TextStyle(
                                                             weight=ft.FontWeight.BOLD,
-                                                            size=16
+                                                            size=14  # Era 16 → 14
                                                         ),
-                                                        shape=ft.RoundedRectangleBorder(radius=12),
-                                                        elevation=4
+                                                        shape=ft.RoundedRectangleBorder(radius=10),
+                                                        elevation=3  # Era 4 → 3
                                                     )
                                                 )
                                             ]
@@ -195,15 +197,15 @@ class NewTagScreen:
                                     ]
                                 ),
                                 theme=self.theme,
-                                border_radius=20
+                                border_radius=16  # Era 20 → 16
                             ),
 
-                            ft.Container(height=40)
+                            ft.Container(height=20)  # Era 40 → 20
                         ],
                         scroll=ft.ScrollMode.AUTO,
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER
                     ),
-                    padding=ft.padding.all(20),
+                    padding=ft.padding.all(16),  # Era 20 → 16
                     expand=True
                 )
             ],
@@ -214,6 +216,7 @@ class NewTagScreen:
 
         return view
 
+    # Resto de métodos igual...
     def validate_form(self):
         """Validar que todos los campos estén completos"""
         errors = []
@@ -224,41 +227,35 @@ class NewTagScreen:
         if not self.reason_field.value or not self.reason_field.value.strip():
             errors.append("Describe qué pasó exactamente")
 
-        # El emoji es opcional, si no hay emoji usamos uno por defecto
-
         return len(errors) == 0, errors
 
     def save_click(self, e):
         """Guardar el tag"""
         self.page = e.page
 
-        # Validar formulario
         is_valid, errors = self.validate_form()
 
         if not is_valid:
             self.show_error(errors[0])
             return
 
-        # Crear el tag
         emoji = self.emoji_field.value.strip() if self.emoji_field.value else self.icon
         if not emoji:
             emoji = "✨" if self.tag_type == "positive" else "💔"
 
         tag = SimpleTag(
             emoji=emoji,
-            category=self.tag_type,  # Usar el tipo predefinido
+            category=self.tag_type,
             name=self.name_field.value.strip(),
             reason=self.reason_field.value.strip()
         )
 
         print(f"🏷️ Tag creado: {tag.emoji} {tag.name} ({tag.category})")
 
-        # Llamar callback si existe
         if self.on_tag_created:
             try:
                 self.on_tag_created(tag)
                 self.show_success("Momento creado correctamente")
-                # Limpiar formulario
                 self.clear_form()
             except Exception as ex:
                 print(f"Error en callback: {ex}")
@@ -273,7 +270,6 @@ class NewTagScreen:
         if self.on_cancel:
             self.on_cancel()
         else:
-            # Volver a la pantalla anterior
             if hasattr(e, 'page'):
                 e.page.go("/entry")
 
@@ -313,46 +309,3 @@ class NewTagScreen:
             self.page.update()
         else:
             print(f"OK: {message}")
-
-# ===== EJEMPLO DE USO =====
-
-def ejemplo_uso():
-    """Ejemplo de cómo usar NewTagScreen"""
-
-    def on_tag_created(tag):
-        print(f"Tag creado: {tag.emoji} {tag.name} ({tag.category})")
-        print(f"Razón: {tag.reason}")
-        # Aquí añadirías el tag a tu lista
-
-    def on_cancel():
-        print("Cancelado por el usuario")
-        # Aquí manejarías la cancelación
-
-    # Crear pantalla para momento positivo
-    tag_screen = NewTagScreen(
-        tag_type="positive",  # o "negative"
-        on_tag_created=on_tag_created,
-        on_cancel=on_cancel
-    )
-
-    return tag_screen.build()
-
-if __name__ == "__main__":
-    # Prueba rápida
-    def main(page: ft.Page):
-        page.title = "Nueva Pantalla de Tags"
-        page.window.width = 400
-        page.window.height = 720
-
-        def on_tag_created(tag):
-            print(f"OK Tag: {tag.emoji} {tag.name}")
-            page.go("/")  # Volver al inicio
-
-        screen = NewTagScreen(
-            tag_type="positive",
-            on_tag_created=on_tag_created
-        )
-        page.views.append(screen.build())
-        page.update()
-
-    ft.app(target=main)

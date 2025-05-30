@@ -15,6 +15,8 @@ from services.reflect_themes_system import (
     ThemeManager, ThemeType, get_theme, apply_theme_to_page,
     create_gradient_header, theme_manager
 )
+from screens.ai_chat_screen import AIChatScreen
+
 
 class ReflectApp:
     """Aplicación principal CORREGIDA con sistema de tags temporales"""
@@ -31,6 +33,8 @@ class ReflectApp:
         self.calendar_screen = None
         self.day_details_screen = None
         self.theme_selector_screen = None
+        self.ai_chat_screen = None
+        self.chat_context = None  #
 
         # Estado
         self.current_day_details = None
@@ -48,8 +52,8 @@ class ReflectApp:
         page.theme_mode = ft.ThemeMode.LIGHT
         page.padding = 0
         page.spacing = 0
-        page.window.width = 400
-        page.window.height = 720
+        page.window.width = 380
+        page.window.height = 640
         page.window.resizable = False
 
         # Aplicar tema inicial
@@ -94,6 +98,8 @@ class ReflectApp:
             elif page.route == "/theme_selector":
                 print("🎨 Navegando a THEME_SELECTOR")
                 self.handle_theme_selector_route(page)
+            elif page.route=="/ai_chat":
+                self.handle_ai_chat_route(page)
 
             page.update()
             print(f"✅ Navegación a {page.route} completada")
@@ -421,7 +427,39 @@ class ReflectApp:
             self.login_screen.page.go("/entry")
 
         print(f"✅ === NAVIGATE TO ENTRY COMPLETADO ===")
+    def handle_ai_chat_route(self, page):
+        """Manejar ruta del chat con IA"""
+        print("🧠 === HANDLE AI CHAT ROUTE ===")
 
+        # Crear nueva instancia del chat
+        self.ai_chat_screen = AIChatScreen(self)
+        self.ai_chat_screen.page = page
+
+        # Si hay contexto guardado, pasarlo al chat
+        if hasattr(self, 'chat_context') and self.chat_context:
+            print(f"📋 Pasando contexto al chat:")
+            print(f"   Usuario: {self.chat_context.get('user', {}).get('name', 'Unknown')}")
+            print(f"   Reflexión: {len(self.chat_context.get('reflection', ''))} caracteres")
+            print(f"   Tags: +{len(self.chat_context.get('positive_tags', []))} -{len(self.chat_context.get('negative_tags', []))}")
+
+            self.ai_chat_screen.set_initial_context(
+                reflection_text=self.chat_context.get('reflection', ''),
+                positive_tags=self.chat_context.get('positive_tags', []),
+                negative_tags=self.chat_context.get('negative_tags', []),
+                worth_it=self.chat_context.get('worth_it')
+            )
+
+            # Limpiar contexto después de usarlo
+            self.chat_context = None
+        else:
+            print("⚠️ No hay contexto para el chat - iniciando chat vacío")
+
+        # Construir y mostrar vista
+        view = self.ai_chat_screen.build()
+        self.apply_theme_to_view(view)
+        page.views.append(view)
+
+        print("✅ Chat IA inicializado correctamente")
     def navigate_to_login(self):
         """Navegar al login"""
         print("🔑 === NAVIGATE TO LOGIN ===")

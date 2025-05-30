@@ -173,45 +173,43 @@ class CalendarScreen:
     # ====== UI METHODS ACTUALIZADOS CON TEMAS ======
 
     def build(self):
-        """Construir vista principal del calendario CON TEMAS"""
-        # Actualizar tema
+        """Construir vista principal - PADDING OPTIMIZADO"""
         self.update_theme()
 
-        # Cargar datos iniciales del año
-        print(f"🔄 Cargando datos iniciales para el año {self.selected_year}")
+    # Cargar datos iniciales del año
         self.months_data = self.load_year_data(self.selected_year)
 
-        # Header con tema
+    # Header con tema
         back_button = ft.TextButton(
-            "← Volver",
+        "← Volver",
             on_click=self.go_back,
             style=ft.ButtonStyle(color="#FFFFFF")
-        )
+    )
 
         header = create_gradient_header(
             title="📅 Calendario Zen",
             left_button=back_button,
             theme=self.theme
-        )
+    )
 
-        # Contenedor principal que cambiará según la vista
+    # Contenedor principal con PADDING REDUCIDO
         self.main_container = ft.Container(
-            content=self.build_months_view(),  # Empezar con vista de meses
-            expand=True,
-            padding=ft.padding.all(20)
-        )
+        content=self.build_months_view(),
+        expand=True,
+        padding=ft.padding.all(12)  # ✅ Era 20 → 12 (más compacto)
+    )
 
-        # Vista completa CON TEMA
+    # Vista completa
         view = ft.View(
-            "/calendar",
-            [
-                header,
-                self.main_container
-            ],
-            bgcolor=self.theme.primary_bg,  # CAMBIADO: Usar tema
-            padding=0,
-            spacing=0
-        )
+        "/calendar",
+        [
+            header,
+            self.main_container
+        ],
+        bgcolor=self.theme.primary_bg,
+        padding=0,
+        spacing=0
+    )
 
         return view
 
@@ -316,45 +314,46 @@ class CalendarScreen:
             text_color = "#FFFFFF" if month_color in [self.theme.positive_main, self.theme.negative_main] else self.theme.text_primary
 
         return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Text(
-                        month_name[:3].upper(),  # ENE, FEB, MAR
-                        size=14,
-                        weight=ft.FontWeight.BOLD,
-                        color=text_color,
-                        text_align=ft.TextAlign.CENTER
-                    ),
-                    ft.Text(
-                        f"{month_data['total']}",
-                        size=18,
-                        weight=ft.FontWeight.W_600,
-                        color=text_color,
-                        text_align=ft.TextAlign.CENTER
-                    ),
-                    ft.Text(
-                        f"+{month_data['positive']} -{month_data['negative']}",
-                        size=10,
-                        color=text_color,
-                        text_align=ft.TextAlign.CENTER
-                    )
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=4
-            ),
-            width=100,
-            height=80,
-            bgcolor=bg_color,
-            border_radius=12,
-            padding=ft.padding.all(8),
-            on_click=lambda e, m=month_num: self.select_month(m),
-            shadow=ft.BoxShadow(
-                spread_radius=0,
-                blur_radius=4,
-                color=self.theme.shadow_color,  # CAMBIADO: Usar tema
-                offset=ft.Offset(0, 2)
-            )
+        content=ft.Column(
+            [
+                ft.Text(
+                    month_name[:3].upper(),
+                    size=14,
+                    weight=ft.FontWeight.BOLD,
+                    color=text_color,
+                    text_align=ft.TextAlign.CENTER
+                ),
+                ft.Text(
+                    f"{month_data['total']}",
+                    size=18,
+                    weight=ft.FontWeight.W_600,
+                    color=text_color,
+                    text_align=ft.TextAlign.CENTER
+                ),
+                ft.Text(
+                    f"+{month_data['positive']} -{month_data['negative']}",
+                    size=10,
+                    color=text_color,
+                    text_align=ft.TextAlign.CENTER
+                )
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=4
+        ),
+        width=100,
+        height=80,
+        bgcolor=bg_color,
+        border_radius=12,
+        padding=ft.padding.all(8),
+        on_click=lambda e, m=month_num: self.select_month(m),
+        # ✅ SOMBRA CORREGIDA - ANTES ERA HARDCODED
+        shadow=ft.BoxShadow(
+            spread_radius=0,
+            blur_radius=4,
+            color=self.theme.shadow_color,  # ✅ AHORA USA EL TEMA
+            offset=ft.Offset(0, 2)
         )
+    )
 
     def build_days_view(self):
         """Construir vista de días del mes seleccionado CON TEMAS"""
@@ -492,51 +491,51 @@ class CalendarScreen:
         )
 
     def build_legend(self):
-        """Construir leyenda de colores CON TEMAS"""
+        """Construir leyenda con padding y tamaños OPTIMIZADOS"""
         return create_themed_container(
-            content=ft.Column(
-                [
-                    ft.Text(
-                        "Leyenda:",
-                        size=14,
-                        weight=ft.FontWeight.W_500,
-                        color=self.theme.text_primary
-                    ),
-                    ft.Container(height=8),
-                    ft.Row(
-                        [
-                            self.create_legend_item(self.theme.positive_main, "Días positivos"),
-                            self.create_legend_item(self.theme.negative_main, "Días negativos"),
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER
-                    ),
-                    ft.Container(height=8),
-                    ft.Row(
-                        [
-                            self.create_legend_item(self.theme.accent_secondary, "Día actual"),
-                            self.create_legend_item(self.theme.surface, "Días futuros"),
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER
-                    )
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            ),
-            theme=self.theme,
-            border_radius=12
-        )
+        content=ft.Column(
+            [
+                ft.Text(
+                    "Leyenda:",
+                    size=12,  # ✅ Era 14 → 12 (más compacto)
+                    weight=ft.FontWeight.W_500,
+                    color=self.theme.text_primary
+                ),
+                ft.Container(height=6),  # ✅ Era 8 → 6
+                ft.Row(
+                    [
+                        self.create_legend_item(self.theme.positive_main, "Positivos"),
+                        self.create_legend_item(self.theme.negative_main, "Negativos"),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                ),
+                ft.Container(height=6),  # ✅ Era 8 → 6
+                ft.Row(
+                    [
+                        self.create_legend_item(self.theme.accent_secondary, "Hoy"),
+                        self.create_legend_item(self.theme.surface, "Futuros"),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        ),
+        theme=self.theme,
+        border_radius=12
+    )
 
     def create_legend_item(self, color, label):
-        """Crear item de leyenda CON TEMAS"""
+        """Crear item de leyenda MÁS COMPACTO"""
         return ft.Row(
-            [
-                ft.Container(width=16, height=16, bgcolor=color, border_radius=4),
-                ft.Container(width=8),
-                ft.Text(label, size=12, color=self.theme.text_secondary)
-            ],
-            spacing=0
-        )
+        [
+            ft.Container(width=12, height=12, bgcolor=color, border_radius=3),  # ✅ Era 16x16 → 12x12
+            ft.Container(width=6),  # ✅ Era 8 → 6
+            ft.Text(label, size=10, color=self.theme.text_secondary)  # ✅ Era 12 → 10
+        ],
+        spacing=0
+    )
 
-    # ====== EVENT HANDLERS ACTUALIZADOS ======
+
 
     def change_year(self, direction):
         """Cambiar año (+1 o -1)"""

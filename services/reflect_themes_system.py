@@ -1,6 +1,6 @@
 """
-🌙 Sistema de Temas MEJORADO - ReflectApp
-Sistema con temas oscuros y claros elegantes
+🌙 Sistema de Temas CORREGIDO COMPLETO - ReflectApp
+Sistema con temas oscuros y claros elegantes - TODOS LOS COLORES CORREGIDOS
 """
 
 import flet as ft
@@ -10,11 +10,11 @@ import json
 import os
 
 class ThemeType(Enum):
-    """Tipos de temas disponibles - ACTUALIZADOS"""
+    """Tipos de temas disponibles - COMPLETOS"""
     DEEP_OCEAN = "deep_ocean"
     ELECTRIC_DARK = "electric_dark"
-    SPRING_LIGHT = "spring_light"        # NUEVO: Tema claro primaveral
-    SUNSET_WARM = "sunset_warm"          # NUEVO: Tema claro cálido
+    SPRING_LIGHT = "spring_light"        # Tema claro primaveral
+    SUNSET_WARM = "sunset_warm"          # Tema claro cálido - CORREGIDO
 
 class ReflectTheme:
     """Clase base para definir un tema completo"""
@@ -24,7 +24,7 @@ class ReflectTheme:
         self.display_name = display_name
         self.icon = icon
         self.description = description
-        self.is_dark = is_dark  # NUEVO: Indica si es tema oscuro o claro
+        self.is_dark = is_dark  # Indica si es tema oscuro o claro
 
         # Colores base - deben ser sobrescritos por cada tema
         self.primary_bg = "#000000"
@@ -150,7 +150,7 @@ class ElectricDarkTheme(ReflectTheme):
         self.glass_bg = "#6366F120"
 
 class SpringLightTheme(ReflectTheme):
-    """🌸 Spring Light - Tema claro primaveral y fresco"""
+    """🌸 Spring Light - Tema claro primaveral y fresco - VERIFICADO"""
 
     def __init__(self):
         super().__init__(
@@ -195,7 +195,7 @@ class SpringLightTheme(ReflectTheme):
         self.glass_bg = "#05966910"
 
 class SunsetWarmTheme(ReflectTheme):
-    """🌅 Sunset Warm - Tema claro cálido y acogedor"""
+    """🌅 Sunset Warm - Tema claro cálido y acogedor - COLORES CORREGIDOS"""
 
     def __init__(self):
         super().__init__(
@@ -206,11 +206,12 @@ class SunsetWarmTheme(ReflectTheme):
             is_dark=False  # ¡TEMA CLARO!
         )
 
-        # Fondos cálidos claros
+        # ✅ FONDOS CÁLIDOS CLAROS CORREGIDOS
         self.primary_bg = "#FFF7ED"       # Naranja muy claro
         self.secondary_bg = "#FFFFFF"      # Blanco puro
         self.surface = "#FFFFFF"           # Blanco puro
-        self.surface_variant = "#FEF3C7"   # Amarillo muy suave
+        # ✅ CORREGIDO: Era amarillento (#FEF3C7) → ahora neutro
+        self.surface_variant = "#F8F9FA"   # Gris neutro suave
 
         # Acentos naranjas cálidos
         self.accent_primary = "#EA580C"    # Naranja vibrante
@@ -226,6 +227,7 @@ class SunsetWarmTheme(ReflectTheme):
         self.positive_light = "#F0FDF4"    # Verde muy claro
         self.positive_glow = "#BBF7D0"     # Verde suave
 
+        # ✅ ESTADOS NEGATIVOS CORREGIDOS (rosa/rojo, NO amarillo)
         self.negative_main = "#DC2626"     # Rojo intenso
         self.negative_light = "#FEF2F2"    # Rosa muy claro
         self.negative_glow = "#FECACA"     # Rosa suave
@@ -240,19 +242,19 @@ class SunsetWarmTheme(ReflectTheme):
         self.glass_bg = "#EA580C10"
 
 class ThemeManager:
-    """Gestor central de temas ACTUALIZADO"""
+    """Gestor central de temas COMPLETO Y CORREGIDO"""
 
     def __init__(self, storage_path: str = "data/theme_settings.json"):
         self.storage_path = storage_path
         self.current_theme = None
         self.theme_change_callbacks: List[Callable] = []
 
-        # Registrar todos los temas disponibles - ACTUALIZADOS
+        # Registrar todos los temas disponibles - CORREGIDOS
         self.themes = {
             ThemeType.DEEP_OCEAN: DeepOceanTheme(),
             ThemeType.ELECTRIC_DARK: ElectricDarkTheme(),
-            ThemeType.SPRING_LIGHT: SpringLightTheme(),    # NUEVO
-            ThemeType.SUNSET_WARM: SunsetWarmTheme()       # NUEVO
+            ThemeType.SPRING_LIGHT: SpringLightTheme(),
+            ThemeType.SUNSET_WARM: SunsetWarmTheme()      # CORREGIDO
         }
 
         # Cargar tema guardado o usar por defecto
@@ -344,6 +346,20 @@ class ThemeManager:
 
         except Exception as e:
             print(f"❌ Error guardando tema: {e}")
+
+    def debug_theme_colors(self):
+        """Función para debuggear colores de todos los temas"""
+        print("🎨 === DEBUG DE COLORES DE TEMAS ===")
+        for theme_type, theme in self.themes.items():
+            print(f"\n{theme.display_name}:")
+            print(f"  • Tipo: {'Oscuro' if theme.is_dark else 'Claro'}")
+            print(f"  • Primary bg: {theme.primary_bg}")
+            print(f"  • Surface: {theme.surface}")
+            print(f"  • Surface variant: {theme.surface_variant}")
+            print(f"  • Negative main: {theme.negative_main}")
+            print(f"  • Negative light: {theme.negative_light}")
+            print(f"  • Border: {theme.border_color}")
+            print(f"  • Shadow: {theme.shadow_color}")
 
 # Instancia global del gestor de temas
 theme_manager = ThemeManager()
@@ -538,3 +554,31 @@ class ZenColors:
 
 # Instancia global para compatibilidad
 zen_colors = ZenColors()
+
+# ✅ FUNCIÓN DE DEBUG PARA VERIFICAR COLORES
+def debug_all_theme_colors():
+    """Función para debuggear todos los colores y detectar problemas"""
+    print("🔍 === ANÁLISIS COMPLETO DE COLORES DE TEMAS ===")
+
+    for theme_type, theme in theme_manager.themes.items():
+        print(f"\n{'='*50}")
+        print(f"🎨 {theme.display_name} ({'OSCURO' if theme.is_dark else 'CLARO'})")
+        print(f"{'='*50}")
+
+        # Verificar colores problemáticos
+        colors_to_check = {
+            "Surface variant": theme.surface_variant,
+            "Negative light": theme.negative_light,
+            "Positive light": theme.positive_light,
+            "Border": theme.border_color
+        }
+
+        for color_name, color_value in colors_to_check.items():
+            # Detectar colores amarillentos problemáticos
+            if "FEF" in color_value.upper() and "C7" in color_value.upper():
+                print(f"  ⚠️  {color_name}: {color_value} (POSIBLEMENTE AMARILLENTO)")
+            else:
+                print(f"  ✅ {color_name}: {color_value}")
+
+# Para debuggear colores, descomenta esta línea:
+# debug_all_theme_colors()
