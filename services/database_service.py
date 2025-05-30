@@ -697,3 +697,22 @@ class DatabaseService:
         except Exception as e:
             print(f"❌ Error obteniendo contador zen: {e}")
             return 0
+
+
+    # En tu database_service.py - NUEVA TABLA
+def create_memory_table(self):
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            tipo TEXT NOT NULL,
+            contenido TEXT NOT NULL,  -- JSON
+            contexto_original TEXT,
+            importancia REAL,
+            frecuencia INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    """)

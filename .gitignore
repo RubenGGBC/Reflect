@@ -1,0 +1,11 @@
+# Credenciales sensibles
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Datos locales
+data/
+*.db

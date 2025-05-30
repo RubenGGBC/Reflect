@@ -1,27 +1,15 @@
+"""
+📝 Entry Screen MEJORADA - ReflectApp
+Pantalla principal con layout corregido y persistencia del texto
+"""
+
 import flet as ft
 from services.ai_service import analyze_tag, get_daily_summary
 from screens.new_tag_screen import NewTagScreen, SimpleTag
-
-# Asegurar que DynamicTag esté definido
-
-class ZenColors:
-    """Colores zen específicos"""
-    # Positivos
-    positive_light = "#E8F5E8"
-    positive_glow = "#A8EDEA"
-    positive_main = "#48BB78"
-
-    # Negativos (antes growth)
-    negative_light = "#FEE2E2"
-    negative_glow = "#FECACA"
-    negative_main = "#EF4444"
-
-    # Base
-    background = "#F8FAFC"
-    surface = "#FFFFFF"
-    text_primary = "#2D3748"
-    text_secondary = "#4A5568"
-    text_hint = "#A0AEC0"
+from services.reflect_themes_system import (
+    get_theme, create_themed_container, create_themed_button,
+    create_gradient_header, zen_colors, apply_theme_to_page
+)
 
 class DynamicTag:
     def __init__(self, name, context, tag_type, ai_feedback="", emoji=None):
@@ -41,634 +29,919 @@ class DynamicTag:
             emoji=simple_tag.emoji
         )
 
+    @classmethod
+    def from_dict(cls, tag_dict):
+        """Crear DynamicTag desde diccionario"""
+        return cls(
+            name=tag_dict.get('name', ''),
+            context=tag_dict.get('context', ''),
+            tag_type=tag_dict.get('type', 'positive'),
+            emoji=tag_dict.get('emoji', '+')
+        )
+
+    def to_dict(self):
+        """Convertir a diccionario"""
+        return {
+            "name": self.name,
+            "context": self.context,
+            "type": self.type,
+            "emoji": self.emoji
+        }
+
+    def __str__(self):
+        return f"DynamicTag({self.emoji} {self.name} - {self.type})"
+
 class EntryScreen:
     def __init__(self, app):
         self.app = app
         self.page = None
         self.current_user = None
+        self.theme = get_theme()
 
         # Campos principales
         self.reflection_field = None
         self.positive_tags = []
-        self.negative_tags = []  # Cambio de growth_tags
-        self.worth_it = None  # True, False, o None
+        self.negative_tags = []
+        self.worth_it = None
 
         # Contenedores para tags
         self.positive_tags_container = None
-        self.negative_tags_container = None  # Cambio de growth_tags_container
+        self.negative_tags_container = None
         self.worth_it_buttons = {"yes": None, "no": None}
 
-    def set_user(self, user_data):
-        """Establecer usuario y cargar datos del día"""
-        self.current_user = user_data
-        self.load_today_tags()
+        # Estado de carga y bloqueo - NUEVO
+        self.tags_loaded = False
+        self.data_loaded = False
+        self.is_saved_today = False  # NUEVO: Para bloquear cambios después de guardar
 
-    def load_today_tags(self):
-        """Cargar tags del día actual desde la base de datos"""
+        print("🏗️ EntryScreen inicializada con sistema mejorado")
+
+    def set_user(self, user_data):
+        """Establecer usuario y marcar datos como no cargados"""
+        self.current_user = user_data
+        self.data_loaded = False
+        self.is_saved_today = False  # Reset del estado de guardado
+        print(f"🙋‍♂️ Usuario establecido: {user_data.get('name', 'Unknown')} (ID: {user_data.get('id')})")
+
+    def update_theme(self):
+        """Actualizar tema cuando cambie"""
+        old_theme = self.theme.name if self.theme else "none"
+        self.theme = get_theme()
+        new_theme = self.theme.name
+
+        print(f"🎨 Actualizando tema: {old_theme} → {new_theme}")
+
+        if self.page:
+            apply_theme_to_page(self.page)
+            self.page.update()
+
+    def check_if_saved_today(self):
+        """Verificar si ya se guardó una entrada hoy - NUEVO MÉTODO"""
         if not self.current_user:
+            return False
+
+        try:
+            from services import db
+            user_id = self.current_user['id']
+            self.is_saved_today = db.has_submitted_today(user_id)
+            print(f"📅 ¿Guardado hoy?: {self.is_saved_today}")
+            return self.is_saved_today
+        except Exception as e:
+            print(f"❌ Error verificando si guardó hoy: {e}")
+            return False
+
+    def load_today_data(self):
+        """Cargar datos de hoy (entrada guardada + tags temporales)"""
+        print("📅 === INICIANDO CARGA COMPLETA DE DATOS DE HOY ===")
+
+        if not self.current_user:
+            print("❌ No hay usuario para cargar datos")
             return
 
         try:
             from services import db
-            # Obtener entradas de hoy
-            entries_today = db.get_user_entries(
-                user_id=self.current_user['id'],
-                limit=10,  # Entradas recientes
-                offset=0
-            )
+            user_id = self.current_user['id']
 
-            # Limpiar listas actuales
-            self.positive_tags.clear()
-            self.negative_tags.clear()
+            print(f"🔍 Cargando datos de hoy para usuario {user_id}")
 
-            # Procesar entradas de hoy
-            from datetime import date
-            today = date.today().isoformat()
+            # Verificar si ya guardó hoy
+            self.check_if_saved_today()
 
-            for entry in entries_today:
-                if entry.get('entry_date') == today:
-                    # Cargar tags positivos
-                    for tag_data in entry.get('positive_tags', []):
-                        tag = DynamicTag(
-                            name=tag_data.get('name', ''),
-                            context=tag_data.get('context', ''),
-                            tag_type="positive",
-                            emoji=tag_data.get('emoji', '+')
-                        )
-                        self.positive_tags.append(tag)
+            # Usar nuevo método que combina entrada guardada + tags temporales
+            today_data = db.get_today_entry_with_temp_tags(user_id)
 
-                    # Cargar tags negativos
-                    for tag_data in entry.get('negative_tags', []):
-                        tag = DynamicTag(
-                            name=tag_data.get('name', ''),
-                            context=tag_data.get('context', ''),
-                            tag_type="negative",
-                            emoji=tag_data.get('emoji', '-')
-                        )
-                        self.negative_tags.append(tag)
+            # IMPORTANTE: No limpiar datos si ya están cargados y hay texto en reflexión
+            if not self.data_loaded:
+                self.positive_tags.clear()
+                self.negative_tags.clear()
 
-                    # Solo procesamos la primera entrada de hoy
-                    break
+            # Cargar reflexión SOLO si no hay texto ya escrito (evitar borrar)
+            if today_data.get('reflection') and self.reflection_field:
+                if not self.reflection_field.value or not self.reflection_field.value.strip():
+                    self.reflection_field.value = today_data['reflection']
+                    print(f"📝 Reflexión cargada: {today_data['reflection'][:50]}...")
+                else:
+                    print(f"📝 Reflexión NO sobrescrita - ya hay texto")
 
-            print(f"Cargados {len(self.positive_tags)} tags positivos y {len(self.negative_tags)} tags negativos")
+            # Cargar worth_it
+            if today_data.get('worth_it') is not None:
+                self.worth_it = today_data['worth_it']
+                print(f"💭 Worth it cargado: {self.worth_it}")
+
+            # Cargar tags positivos (SOLO si no están ya cargados)
+            if not self.data_loaded:
+                positive_tags_data = today_data.get('positive_tags', [])
+                for tag_data in positive_tags_data:
+                    tag = DynamicTag.from_dict(tag_data)
+                    self.positive_tags.append(tag)
+                    print(f"  ➕ Tag positivo: {tag}")
+
+                # Cargar tags negativos
+                negative_tags_data = today_data.get('negative_tags', [])
+                for tag_data in negative_tags_data:
+                    tag = DynamicTag.from_dict(tag_data)
+                    self.negative_tags.append(tag)
+                    print(f"  ➖ Tag negativo: {tag}")
+
+            print(f"📊 DATOS CARGADOS: {len(self.positive_tags)} positivos, {len(self.negative_tags)} negativos")
+            print(f"📊 Estado: Guardado={today_data.get('has_saved_entry', False)}, Temporal={today_data.get('has_temp_tags', False)}")
+            print(f"🔒 Ya guardó hoy: {self.is_saved_today}")
+
+            self.data_loaded = True
 
         except Exception as ex:
-            print(f"Error cargando tags del día: {ex}")
+            print(f"❌ ERROR CRÍTICO cargando datos de hoy: {ex}")
+            import traceback
+            traceback.print_exc()
 
     def build(self):
-        """Construir vista principal zen"""
-        # Cargar tags del día al construir la vista
-        self.load_today_tags()
+        """Construir vista principal zen con layout CORREGIDO"""
+        print("🏗️ === CONSTRUYENDO ENTRYSCREEN MEJORADA ===")
 
-        # Resto del código de build() igual...
+        # Actualizar tema
+        self.theme = get_theme()
+        print(f"🎨 Construyendo EntryScreen con tema: {self.theme.display_name}")
 
-        # Campo de reflexión libre zen
+        # Campo de reflexión libre zen con tema
         self.reflection_field = ft.TextField(
-            label="Como te ha ido el dia?",
-            hint_text="Cuentame sobre tu dia... Tomate tu tiempo para reflexionar",
+            label="¿Cómo te ha ido el día?",
+            hint_text="Cuéntame sobre tu día... Tómate tu tiempo para reflexionar",
             multiline=True,
             min_lines=4,
             max_lines=8,
             border=ft.InputBorder.OUTLINE,
-            border_color="#E2E8F0",
-            focused_border_color="#667EEA",
+            border_color=self.theme.border_color,
+            focused_border_color=self.theme.accent_primary,
             border_radius=20,
             content_padding=ft.padding.all(20),
-            text_style=ft.TextStyle(size=16, height=1.6),
-            cursor_color="#667EEA"
+            text_style=ft.TextStyle(size=16, height=1.6, color=self.theme.text_primary),
+            cursor_color=self.theme.accent_primary,
+            bgcolor=self.theme.surface,
+            color=self.theme.text_primary,
+            label_style=ft.TextStyle(color=self.theme.text_secondary),
+            # NUEVO: Hacer readonly si ya guardó hoy
+            read_only=self.is_saved_today
         )
 
         # Contenedores para tags dinámicos
         self.positive_tags_container = ft.Column(spacing=8)
-        self.negative_tags_container = ft.Column(spacing=8)  # Cambio
+        self.negative_tags_container = ft.Column(spacing=8)
 
-        # Botones para "¿Mereció la pena?"
+        print(f"📦 Contenedores creados")
+
+        # Botones para "¿Mereció la pena?" con tema
         self.worth_it_buttons["yes"] = ft.ElevatedButton(
-            "SI",
+            "SÍ",
             on_click=lambda e: self.set_worth_it(True, e),
             style=ft.ButtonStyle(
-                bgcolor="#F1F5F9",
-                color="#4A5568",
+                bgcolor=self.theme.surface_variant,
+                color=self.theme.text_secondary,
                 elevation=0,
                 padding=ft.padding.symmetric(horizontal=32, vertical=16),
                 shape=ft.RoundedRectangleBorder(radius=20)
             ),
-            height=48
+            height=48,
+            disabled=self.is_saved_today  # NUEVO: Deshabilitar si ya guardó
         )
 
         self.worth_it_buttons["no"] = ft.ElevatedButton(
             "NO",
             on_click=lambda e: self.set_worth_it(False, e),
             style=ft.ButtonStyle(
-                bgcolor="#F1F5F9",
-                color="#4A5568",
+                bgcolor=self.theme.surface_variant,
+                color=self.theme.text_secondary,
                 elevation=0,
                 padding=ft.padding.symmetric(horizontal=32, vertical=16),
                 shape=ft.RoundedRectangleBorder(radius=20)
             ),
-            height=48
+            height=48,
+            disabled=self.is_saved_today  # NUEVO: Deshabilitar si ya guardó
         )
 
-        # Vista principal zen
-        view = ft.View(
-            "/entry",
+        # Header con gradiente temático
+        back_button = ft.TextButton(
+            "← Salir",
+            on_click=self.logout_click,
+            style=ft.ButtonStyle(color="#FFFFFF")
+        )
+
+        # LAYOUT CORREGIDO: Botones uno al lado del otro
+        top_buttons_row = ft.Row(
             [
-                # Header zen con gradiente
-                ft.Container(
-                    content=ft.Row(
+                ft.TextButton(
+                    "🎨",
+                    on_click=self.go_to_theme_selector,
+                    style=ft.ButtonStyle(color="#FFFFFF"),
+                    tooltip="Cambiar tema"
+                ),
+                ft.TextButton(
+                    "📅",
+                    on_click=self.go_to_calendar,
+                    style=ft.ButtonStyle(color="#FFFFFF"),
+                    tooltip="Ver calendario"
+                )
+            ],
+            spacing=0
+        )
+
+        user_name = self.current_user.get('name', 'Viajero') if self.current_user else 'Viajero'
+        header = create_gradient_header(
+            title=f"Hola, {user_name} 🧘‍♀️",
+            left_button=back_button,
+            right_button=top_buttons_row,
+            theme=self.theme
+        )
+
+        # MENSAJE DE ESTADO SI YA GUARDÓ - NUEVO
+        status_message = None
+        if self.is_saved_today:
+            status_message = ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(ft.icons.LOCK, color=self.theme.accent_primary, size=20),
+                        ft.Text(
+                            "✅ Entrada del día guardada. Solo puedes visualizar.",
+                            color=self.theme.accent_primary,
+                            size=14,
+                            weight=ft.FontWeight.W_500
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                ),
+                bgcolor=self.theme.positive_light,
+                padding=ft.padding.all(12),
+                border_radius=12,
+                border=ft.border.all(1, self.theme.positive_main),
+                margin=ft.margin.only(bottom=16)
+            )
+
+        # Vista principal zen con tema
+        main_content = ft.Column(
+            [
+                # Mensaje de estado (si aplica)
+                status_message,
+
+                # Campo de reflexión libre
+                create_themed_container(
+                    content=ft.Column(
                         [
-                            ft.TextButton(
-                                "← Salir",
-                                on_click=self.logout_click,
-                                style=ft.ButtonStyle(color="#FFFFFF")
-                            ),
                             ft.Text(
-                                f"Hola, {self.current_user.get('name', 'Viajero') if self.current_user else 'Viajero'} 🧘‍♀️",
+                                "Reflexión Libre",
+                                size=20,
+                                weight=ft.FontWeight.W_500,
+                                color=self.theme.text_primary
+                            ),
+                            ft.Container(height=16),
+                            self.reflection_field
+                        ]
+                    ),
+                    theme=self.theme
+                ),
+
+                ft.Container(height=24),
+
+                # Sección MOMENTOS POSITIVOS
+                create_themed_container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Text(
+                                        "+ MOMENTOS POSITIVOS",
+                                        size=18,
+                                        weight=ft.FontWeight.W_600,
+                                        color=self.theme.positive_main,
+                                        expand=True
+                                    ),
+                                    # NUEVO: Solo mostrar botón + si no guardó hoy
+                                    ft.Container(
+                                        content=ft.TextButton(
+                                            content=ft.Text(
+                                                "+",
+                                                size=20,
+                                                color=self.theme.positive_main,
+                                                weight=ft.FontWeight.BOLD
+                                            ),
+                                            on_click=self.open_positive_tag_dialog,
+                                            style=ft.ButtonStyle(
+                                                bgcolor=self.theme.positive_light,
+                                                shape=ft.CircleBorder(),
+                                                padding=ft.padding.all(8)
+                                            ),
+                                            disabled=self.is_saved_today
+                                        ),
+                                        bgcolor=self.theme.positive_light,
+                                        border_radius=20,
+                                        padding=ft.padding.all(4)
+                                    ) if not self.is_saved_today else ft.Container()
+                                ]
+                            ),
+                            ft.Container(height=12),
+                            self.positive_tags_container
+                        ]
+                    ),
+                    theme=self.theme,
+                    is_surface=False
+                ),
+
+                ft.Container(height=16),
+
+                # Sección MOMENTOS NEGATIVOS
+                create_themed_container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Text(
+                                        "- MOMENTOS NEGATIVOS",
+                                        size=18,
+                                        weight=ft.FontWeight.W_600,
+                                        color=self.theme.negative_main,
+                                        expand=True
+                                    ),
+                                    # NUEVO: Solo mostrar botón + si no guardó hoy
+                                    ft.Container(
+                                        content=ft.TextButton(
+                                            content=ft.Text(
+                                                "+",
+                                                size=20,
+                                                color=self.theme.negative_main,
+                                                weight=ft.FontWeight.BOLD
+                                            ),
+                                            on_click=self.open_negative_tag_dialog,
+                                            style=ft.ButtonStyle(
+                                                bgcolor=self.theme.negative_light,
+                                                shape=ft.CircleBorder(),
+                                                padding=ft.padding.all(8)
+                                            ),
+                                            disabled=self.is_saved_today
+                                        ),
+                                        bgcolor=self.theme.negative_light,
+                                        border_radius=20,
+                                        padding=ft.padding.all(4)
+                                    ) if not self.is_saved_today else ft.Container()
+                                ]
+                            ),
+                            ft.Container(height=12),
+                            self.negative_tags_container
+                        ]
+                    ),
+                    theme=self.theme,
+                    is_surface=False
+                ),
+
+                ft.Container(height=24),
+
+                # Pregunta final zen
+                create_themed_container(
+                    content=ft.Column(
+                        [
+                            ft.Text(
+                                "¿Ha merecido la pena tu día?",
                                 size=18,
-                                weight=ft.FontWeight.W_400,
-                                color="#FFFFFF",
-                                expand=True,
+                                weight=ft.FontWeight.W_500,
+                                color=self.theme.text_primary,
                                 text_align=ft.TextAlign.CENTER
                             ),
-                            ft.TextButton(
-                                "📅",
-                                on_click=self.go_to_calendar,
-                                style=ft.ButtonStyle(color="#FFFFFF"),
-                                tooltip="Ver calendario"
+                            ft.Container(height=20),
+                            ft.Row(
+                                [
+                                    self.worth_it_buttons["yes"],
+                                    ft.Container(width=16),
+                                    self.worth_it_buttons["no"]
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER
                             )
                         ]
                     ),
-                    padding=ft.padding.all(20),
-                    gradient=ft.LinearGradient(
-                        begin=ft.alignment.center_left,
-                        end=ft.alignment.center_right,
-                        colors=["#667EEA", "#764BA2"]
-                    ),
-                    border_radius=ft.border_radius.only(bottom_left=24, bottom_right=24)
+                    theme=self.theme
                 ),
 
-                # Contenido principal con scroll zen
+                ft.Container(height=32),
+
+                # BOTONES DE ACCIÓN MEJORADOS - LAYOUT CORREGIDO
+                ft.Column(
+                    [
+                        # Primera fila: Guardar (solo si no guardó hoy)
+                        ft.Row(
+                            [
+                                create_themed_button(
+                                    "💾 Guardar Reflexión",
+                                    self.save_entry,
+                                    theme=self.theme,
+                                    button_type="positive",
+                                    height=56,
+                                    width=None
+                                ) if not self.is_saved_today else ft.Container()
+                            ],
+                            expand=True,
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ) if not self.is_saved_today else ft.Container(),
+
+                        ft.Container(height=16) if not self.is_saved_today else ft.Container(),
+
+                        # Segunda fila: Chat IA y Calendario
+                        ft.Row(
+                            [
+                                create_themed_button(
+                                    "🤖 Chat IA",
+                                    self.chat_ai,
+                                    theme=self.theme,
+                                    button_type="primary",
+                                    height=56
+                                ),
+                                ft.Container(width=16),
+                                create_themed_button(
+                                    "📅 Calendario",
+                                    self.go_to_calendar,
+                                    theme=self.theme,
+                                    button_type="primary",
+                                    height=56
+                                )
+                            ],
+                            expand=True
+                        )
+                    ]
+                ),
+
+                ft.Container(height=24)
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            spacing=0
+        )
+
+        # Filtrar None del contenido principal
+        main_content.controls = [control for control in main_content.controls if control is not None]
+
+        view = ft.View(
+            "/entry",
+            [
+                header,
                 ft.Container(
-                    content=ft.Column(
-                        [
-                            # Campo de reflexión libre
-                            ft.Container(
-                                content=ft.Column(
-                                    [
-                                        ft.Text(
-                                            "Reflexion Libre",
-                                            size=20,
-                                            weight=ft.FontWeight.W_500,
-                                            color=ZenColors.text_primary
-                                        ),
-                                        ft.Container(height=16),
-                                        self.reflection_field
-                                    ]
-                                ),
-                                padding=ft.padding.all(24),
-                                bgcolor=ZenColors.surface,
-                                border_radius=20,
-                                border=ft.border.all(1, "#E2E8F0")
-                            ),
-
-                            ft.Container(height=24),
-
-                            # Sección MOMENTOS POSITIVOS
-                            ft.Container(
-                                content=ft.Column(
-                                    [
-                                        ft.Row(
-                                            [
-                                                ft.Text(
-                                                    "+ MOMENTOS POSITIVOS",
-                                                    size=18,
-                                                    weight=ft.FontWeight.W_600,
-                                                    color=ZenColors.positive_main,
-                                                    expand=True
-                                                ),
-                                                ft.TextButton(
-                                                    content=ft.Text("+", size=20, color=ZenColors.positive_main, weight=ft.FontWeight.BOLD),
-                                                    on_click=self.open_positive_tag_dialog,  # Cambiado
-                                                    style=ft.ButtonStyle(
-                                                        bgcolor=ZenColors.positive_light,
-                                                        shape=ft.CircleBorder(),
-                                                        padding=ft.padding.all(8)
-                                                    )
-                                                )
-                                            ]
-                                        ),
-                                        ft.Container(height=12),
-                                        self.positive_tags_container
-                                    ]
-                                ),
-                                padding=ft.padding.all(20),
-                                bgcolor=ZenColors.positive_light,
-                                border_radius=16,
-                                border=ft.border.all(1, ZenColors.positive_glow)
-                            ),
-
-                            ft.Container(height=16),
-
-                            # Sección MOMENTOS NEGATIVOS (antes growth)
-                            ft.Container(
-                                content=ft.Column(
-                                    [
-                                        ft.Row(
-                                            [
-                                                ft.Text(
-                                                    "- MOMENTOS NEGATIVOS",  # Cambiado
-                                                    size=18,
-                                                    weight=ft.FontWeight.W_600,
-                                                    color=ZenColors.negative_main,  # Cambiado
-                                                    expand=True
-                                                ),
-                                                ft.TextButton(
-                                                    content=ft.Text("+", size=20, color=ZenColors.negative_main, weight=ft.FontWeight.BOLD),
-                                                    on_click=self.open_negative_tag_dialog,  # Cambiado
-                                                    style=ft.ButtonStyle(
-                                                        bgcolor=ZenColors.negative_light,  # Cambiado
-                                                        shape=ft.CircleBorder(),
-                                                        padding=ft.padding.all(8)
-                                                    )
-                                                )
-                                            ]
-                                        ),
-                                        ft.Container(height=12),
-                                        self.negative_tags_container  # Cambiado
-                                    ]
-                                ),
-                                padding=ft.padding.all(20),
-                                bgcolor=ZenColors.negative_light,  # Cambiado
-                                border_radius=16,
-                                border=ft.border.all(1, ZenColors.negative_glow)  # Cambiado
-                            ),
-
-                            ft.Container(height=24),
-
-                            # Pregunta final zen
-                            ft.Container(
-                                content=ft.Column(
-                                    [
-                                        ft.Text(
-                                            "¿Ha merecido la pena tu dia?",
-                                            size=18,
-                                            weight=ft.FontWeight.W_500,
-                                            color=ZenColors.text_primary,
-                                            text_align=ft.TextAlign.CENTER
-                                        ),
-                                        ft.Container(height=20),
-                                        ft.Row(
-                                            [
-                                                self.worth_it_buttons["yes"],
-                                                ft.Container(width=16),
-                                                self.worth_it_buttons["no"]
-                                            ],
-                                            alignment=ft.MainAxisAlignment.CENTER
-                                        )
-                                    ]
-                                ),
-                                padding=ft.padding.all(24),
-                                bgcolor=ZenColors.surface,
-                                border_radius=16,
-                                border=ft.border.all(1, "#E2E8F0")
-                            ),
-
-                            ft.Container(height=32),
-
-                            # Botones de acción zen
-                            ft.Row(
-                                [
-                                    ft.ElevatedButton(
-                                        "Guardar",
-                                        on_click=self.save_entry,
-                                        style=ft.ButtonStyle(
-                                            bgcolor="#48BB78",
-                                            color="#FFFFFF",
-                                            elevation=2,
-                                            text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_500),
-                                            shape=ft.RoundedRectangleBorder(radius=16),
-                                            padding=ft.padding.symmetric(vertical=18, horizontal=24)
-                                        ),
-                                        expand=True,
-                                        height=56
-                                    ),
-                                    ft.Container(width=16),
-                                    ft.ElevatedButton(
-                                        "Chat IA",
-                                        on_click=self.chat_ai,
-                                        style=ft.ButtonStyle(
-                                            bgcolor="#667EEA",
-                                            color="#FFFFFF",
-                                            elevation=2,
-                                            text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_500),
-                                            shape=ft.RoundedRectangleBorder(radius=16),
-                                            padding=ft.padding.symmetric(vertical=18, horizontal=24)
-                                        ),
-                                        expand=True,
-                                        height=56
-                                    )
-                                ]
-                            ),
-
-                            ft.Container(height=24)
-                        ],
-                        scroll=ft.ScrollMode.AUTO,
-                        spacing=0
-                    ),
+                    content=main_content,
                     padding=ft.padding.all(20),
                     expand=True
                 )
             ],
             padding=0,
             spacing=0,
-            bgcolor=ZenColors.background
+            bgcolor=self.theme.primary_bg
         )
 
-        # Refrescar tags después de crear la vista
-        self.refresh_positive_tags()
-        self.refresh_negative_tags()
-
+        print("🏗️ Vista EntryScreen construida - esperando carga manual")
         return view
 
+    def load_and_refresh_all(self):
+        """Cargar todos los datos y refrescar interfaz - método público"""
+        print("🔄 === INICIANDO LOAD AND REFRESH ALL ===")
+
+        if not self.current_user:
+            print("❌ No hay usuario actual")
+            return
+
+        if not self.positive_tags_container or not self.negative_tags_container:
+            print("❌ Contenedores de tags no están inicializados")
+            return
+
+        # Cargar datos completos
+        self.load_today_data()
+
+        # Actualizar botones worth_it
+        if self.worth_it is not None:
+            self.update_worth_it_buttons()
+
+        # Refrescar interfaz
+        self.force_refresh_all()
+
+        print(f"✅ === LOAD AND REFRESH COMPLETADO ===")
+
+    def save_tag_temporarily(self, tag):
+        """Guardar tag temporalmente en base de datos"""
+        if not self.current_user:
+            print("❌ No hay usuario para guardar tag temporal")
+            return False
+
+        # NUEVO: No permitir si ya guardó hoy
+        if self.is_saved_today:
+            print("🔒 No se puede añadir tag - entrada ya guardada")
+            return False
+
+        try:
+            from services import db
+            user_id = self.current_user['id']
+
+            tag_id = db.save_temp_tag(
+                user_id=user_id,
+                tag_name=tag.name,
+                tag_context=tag.context,
+                tag_type=tag.type,
+                tag_emoji=tag.emoji
+            )
+
+            if tag_id:
+                print(f"💾 Tag guardado temporalmente: {tag.emoji} {tag.name} (ID: {tag_id})")
+                return True
+            else:
+                print("❌ Error guardando tag temporal")
+                return False
+
+        except Exception as e:
+            print(f"❌ Error en save_tag_temporarily: {e}")
+            return False
+
     def on_tag_created(self, simple_tag):
-        """Callback cuando se crea un tag desde NewTagScreen"""
-        print(f"Recibido tag: {simple_tag.emoji} {simple_tag.name} ({simple_tag.category})")
+        """Callback cuando se crea un tag desde NewTagScreen - MEJORADO SIN BORRAR TEXTO"""
+        print(f"🏷️ === ON_TAG_CREATED MEJORADO ===")
+        print(f"📝 Tag recibido: {simple_tag.emoji} {simple_tag.name} ({simple_tag.category})")
+
+        # NUEVO: No permitir si ya guardó hoy
+        if self.is_saved_today:
+            self.show_error("🔒 No puedes añadir momentos - entrada ya guardada")
+            return
 
         # Convertir SimpleTag a DynamicTag
         tag = DynamicTag.from_simple_tag(simple_tag)
+        print(f"🔄 Tag convertido: {tag}")
 
-        # Añadir a la lista correspondiente
-        if tag.type == "positive":
-            self.positive_tags.append(tag)
-            print(f"Añadido a positive_tags. Total: {len(self.positive_tags)}")
-        elif tag.type == "negative":
-            self.negative_tags.append(tag)
-            print(f"Añadido a negative_tags. Total: {len(self.negative_tags)}")
+        # Guardar temporalmente en base de datos PRIMERO
+        saved_successfully = self.save_tag_temporarily(tag)
 
-        # Forzar actualización de la interfaz
-        self.force_refresh_tags()
+        if saved_successfully:
+            # Añadir a la lista en memoria
+            if tag.type == "positive":
+                self.positive_tags.append(tag)
+                print(f"➕ Añadido a positive_tags. Total: {len(self.positive_tags)}")
+            elif tag.type == "negative":
+                self.negative_tags.append(tag)
+                print(f"➖ Añadido a negative_tags. Total: {len(self.negative_tags)}")
 
-        # Mostrar mensaje de éxito
-        self.show_success(f"Momento {tag.type} '{tag.name}' anadido")
-
-    def force_refresh_tags(self):
-        """Forzar actualización visual de todos los tags"""
-        print("Forzando actualización de tags...")
-        self.refresh_positive_tags()
-        self.refresh_negative_tags()
-
-        # Si tenemos página, forzar actualización completa
-        if hasattr(self, 'page') and self.page:
-            self.page.update()
-            print("Página actualizada")
-
-    def create_test_tag_with_page(self, tag_type, e):
-        """Crear tag de prueba con acceso a página"""
-        self.page = e.page
-        self.create_test_tag(tag_type)
-
-    def create_test_tag(self, tag_type="positive"):
-        """Crear tag de prueba para testing"""
-        print(f"Creando tag de prueba: {tag_type}")
-
-        if tag_type == "positive":
-            test_tag = DynamicTag(
-                name="Prueba Positiva",
-                context="Esto es una prueba de momento positivo",
-                tag_type="positive",
-                emoji="😊"
-            )
-            self.positive_tags.append(test_tag)
-            print(f"Tags positivos totales: {len(self.positive_tags)}")
+            # Refrescar interfaz SIN TOCAR EL CAMPO DE REFLEXIÓN
+            self.force_refresh_all()
+            self.show_success(f"✅ Momento {tag.type} '{tag.name}' añadido")
         else:
-            test_tag = DynamicTag(
-                name="Prueba Negativa",
-                context="Esto es una prueba de momento negativo",
-                tag_type="negative",
-                emoji="😔"
-            )
-            self.negative_tags.append(test_tag)
-            print(f"Tags negativos totales: {len(self.negative_tags)}")
+            self.show_error("❌ Error guardando el momento")
 
-        # Forzar actualización
-        self.force_refresh_tags()
-
-        print(f"Tag de prueba {tag_type} creado y actualizado")
-
-    def open_positive_tag_dialog(self, e):
-        """Abrir pantalla para añadir momento positivo"""
-        self.page = e.page
-        self.page.go("/new_tag?type=positive")
-
-    def open_negative_tag_dialog(self, e):
-        """Abrir pantalla para añadir momento negativo"""
-        self.page = e.page
-        self.page.go("/new_tag?type=negative")
-
-    def refresh_positive_tags(self):
-        """Actualizar visualización de tags positivos"""
-        print(f"Refreshing positive tags. Total: {len(self.positive_tags)}")
-
-        if not self.positive_tags_container:
-            print("ERROR: positive_tags_container no existe")
-            return
-
-        self.positive_tags_container.controls.clear()
-
-        for i, tag in enumerate(self.positive_tags):
-            print(f"Creando chip para tag {i}: {tag.emoji} {tag.name}")
-
-            tag_chip = ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.Text(f"{tag.emoji} {tag.name}", size=14, weight=ft.FontWeight.W_500),
-                                ft.TextButton(
-                                    content=ft.Text("×", size=16),
-                                    on_click=lambda e, t=tag: self.remove_positive_tag(t),
-                                    style=ft.ButtonStyle(padding=ft.padding.all(4))
-                                )
-                            ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                        ),
-                        ft.Text(
-                            tag.context[:50] + "..." if len(tag.context) > 50 else tag.context,
-                            size=12,
-                            color=ZenColors.text_secondary,
-                            italic=True
-                        )
-                    ],
-                    spacing=4,
-                    tight=True
-                ),
-                bgcolor=ZenColors.positive_glow,
-                padding=ft.padding.all(12),
-                border_radius=16,
-                border=ft.border.all(1, ZenColors.positive_main),
-                margin=ft.margin.only(bottom=8)
-            )
-            self.positive_tags_container.controls.append(tag_chip)
-
-        print(f"Chips creados: {len(self.positive_tags_container.controls)}")
-
-    def refresh_negative_tags(self):
-        """Actualizar visualización de tags negativos"""
-        print(f"Refreshing negative tags. Total: {len(self.negative_tags)}")
-
-        if not self.negative_tags_container:
-            print("ERROR: negative_tags_container no existe")
-            return
-
-        self.negative_tags_container.controls.clear()
-
-        for i, tag in enumerate(self.negative_tags):
-            print(f"Creando chip para tag negativo {i}: {tag.emoji} {tag.name}")
-
-            tag_chip = ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.Text(f"{tag.emoji} {tag.name}", size=14, weight=ft.FontWeight.W_500),
-                                ft.TextButton(
-                                    content=ft.Text("×", size=16),
-                                    on_click=lambda e, t=tag: self.remove_negative_tag(t),
-                                    style=ft.ButtonStyle(padding=ft.padding.all(4))
-                                )
-                            ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                        ),
-                        ft.Text(
-                            tag.context[:50] + "..." if len(tag.context) > 50 else tag.context,
-                            size=12,
-                            color=ZenColors.text_secondary,
-                            italic=True
-                        )
-                    ],
-                    spacing=4,
-                    tight=True
-                ),
-                bgcolor=ZenColors.negative_glow,
-                padding=ft.padding.all(12),
-                border_radius=16,
-                border=ft.border.all(1, ZenColors.negative_main),
-                margin=ft.margin.only(bottom=8)
-            )
-            self.negative_tags_container.controls.append(tag_chip)
-
-        print(f"Chips negativos creados: {len(self.negative_tags_container.controls)}")
-
-    def remove_positive_tag(self, tag):
-        """Eliminar tag positivo"""
-        self.positive_tags.remove(tag)
-        self.refresh_positive_tags()
-
-    def remove_negative_tag(self, tag):  # Cambiado nombre
-        """Eliminar tag negativo"""  # Cambiado texto
-        self.negative_tags.remove(tag)  # Cambiado
-        self.refresh_negative_tags()  # Cambiado
-
-    def set_worth_it(self, value, e):
-        """Establecer si mereció la pena el día"""
-        self.page = e.page
-        self.worth_it = value
-
-        # Actualizar estilos de botones
-        for btn_key, btn in self.worth_it_buttons.items():
-            if (btn_key == "yes" and value) or (btn_key == "no" and not value):
-                btn.style.bgcolor = "#48BB78" if value else "#ED8936"
-                btn.style.color = "#FFFFFF"
-            else:
-                btn.style.bgcolor = "#F1F5F9"
-                btn.style.color = "#4A5568"
-
-        if self.page:
-            self.page.update()
+        print(f"🏷️ === ON_TAG_CREATED COMPLETADO ===")
 
     def save_entry(self, e):
-        """Guardar entrada zen"""
+        """Guardar entrada zen - MEJORADO CON BLOQUEO"""
+        print("💾 === SAVE ENTRY MEJORADO ===")
         self.page = e.page
 
-        if not self.reflection_field.value or not self.reflection_field.value.strip():
-            self.show_error("Escribe algo en tu reflexión antes de guardar")
+        # NUEVO: Verificar si ya guardó hoy
+        if self.is_saved_today:
+            self.show_error("🔒 Ya guardaste tu entrada de hoy")
+            return
+
+        reflection_text = self.reflection_field.value.strip() if self.reflection_field.value else ""
+
+        print(f"📝 Reflexión: '{reflection_text[:100]}...'")
+        print(f"➕ Tags positivos: {len(self.positive_tags)}")
+        print(f"➖ Tags negativos: {len(self.negative_tags)}")
+        print(f"💭 Worth it: {self.worth_it}")
+
+        if not reflection_text and not self.positive_tags and not self.negative_tags:
+            self.show_error("Añade al menos una reflexión o un momento del día")
             return
 
         try:
             from services import db
 
             if self.current_user:
-                # Si no hay tags pero sí reflexión, guardar solo la reflexión
+                user_id = self.current_user['id']
+
                 entry_id = db.save_daily_entry(
-                    user_id=self.current_user['id'],
-                    free_reflection=self.reflection_field.value.strip(),
+                    user_id=user_id,
+                    free_reflection=reflection_text,
                     positive_tags=self.positive_tags,
                     negative_tags=self.negative_tags,
                     worth_it=self.worth_it
                 )
 
                 if entry_id:
-                    self.show_success("Reflexion guardada correctamente")
-                    # NO limpiar el formulario aquí para que los tags sigan visibles
-                    # self.clear_form()
+                    print(f"✅ Entrada guardada con ID: {entry_id}")
+                    self.show_success("✨ Reflexión guardada correctamente")
+
+                    # NUEVO: Marcar como guardado y reconstruir vista
+                    self.is_saved_today = True
+                    self.rebuild_view_with_lock()
+
+                    print("🔒 Entrada bloqueada - no se puede modificar más")
                 else:
-                    self.show_error("Error al guardar")
+                    self.show_error("Error al guardar en base de datos")
             else:
                 self.show_error("Usuario no autenticado")
 
         except Exception as ex:
-            print(f"Error guardando: {ex}")
+            print(f"❌ ERROR guardando: {ex}")
+            import traceback
+            traceback.print_exc()
             self.show_error("Error del sistema")
 
-    def chat_ai(self, e):
-        """Iniciar chat con IA"""
-        self.page = e.page
-
-        if not self.reflection_field.value or not self.reflection_field.value.strip():
-            self.show_error("Escribe algo para charlar con la IA")
+    def rebuild_view_with_lock(self):
+        """Reconstruir vista con estado bloqueado - NUEVO MÉTODO"""
+        if not self.page:
             return
 
         try:
-            # Generar resumen del día
+            # Limpiar vistas y reconstruir
+            if self.page.views:
+                self.page.views.clear()
+
+            # Construir nueva vista con estado bloqueado
+            new_view = self.build()
+            self.page.views.append(new_view)
+
+            # Cargar datos y refrescar
+            self.load_and_refresh_all()
+
+            print("🔄 Vista reconstruida con estado bloqueado")
+
+        except Exception as e:
+            print(f"❌ Error reconstruyendo vista: {e}")
+
+    # [Resto de métodos iguales que antes: refresh_positive_tags, refresh_negative_tags, etc.]
+    def refresh_positive_tags(self):
+        """Actualizar visualización de tags positivos con tema"""
+        print(f"🔄 REFRESH POSITIVE TAGS (Total: {len(self.positive_tags)})")
+
+        if not self.positive_tags_container:
+            print("❌ positive_tags_container no existe")
+            return
+
+        self.positive_tags_container.controls.clear()
+
+        if not self.positive_tags:
+            placeholder = ft.Text(
+                "Aún no has añadido momentos positivos del día",
+                size=12,
+                color=self.theme.text_hint,
+                italic=True,
+                text_align=ft.TextAlign.CENTER
+            )
+            self.positive_tags_container.controls.append(placeholder)
+        else:
+            for i, tag in enumerate(self.positive_tags):
+                tag_chip = self.create_tag_chip(tag, "positive")
+                self.positive_tags_container.controls.append(tag_chip)
+
+        print(f"✅ Tags positivos refrescados: {len(self.positive_tags_container.controls)} controles")
+
+    def refresh_negative_tags(self):
+        """Actualizar visualización de tags negativos con tema"""
+        print(f"🔄 REFRESH NEGATIVE TAGS (Total: {len(self.negative_tags)})")
+
+        if not self.negative_tags_container:
+            print("❌ negative_tags_container no existe")
+            return
+
+        self.negative_tags_container.controls.clear()
+
+        if not self.negative_tags:
+            placeholder = ft.Text(
+                "Aún no has añadido momentos negativos del día",
+                size=12,
+                color=self.theme.text_hint,
+                italic=True,
+                text_align=ft.TextAlign.CENTER
+            )
+            self.negative_tags_container.controls.append(placeholder)
+        else:
+            for i, tag in enumerate(self.negative_tags):
+                tag_chip = self.create_tag_chip(tag, "negative")
+                self.negative_tags_container.controls.append(tag_chip)
+
+        print(f"✅ Tags negativos refrescados: {len(self.negative_tags_container.controls)} controles")
+
+    def force_refresh_all(self):
+        """Forzar actualización visual completa"""
+        print("🔄 === FORCE REFRESH ALL ===")
+
+        try:
+            self.refresh_positive_tags()
+            self.refresh_negative_tags()
+
+            # Actualizar campo de reflexión
+            if hasattr(self, 'page') and self.page:
+                self.page.update()
+                print("🔄 Página actualizada")
+
+            print("✅ === FORCE REFRESH COMPLETADO ===")
+        except Exception as e:
+            print(f"❌ ERROR en force_refresh_all: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def create_tag_chip(self, tag, tag_type):
+        """Crear chip visual para un tag"""
+        is_positive = tag_type == "positive"
+        bg_color = self.theme.positive_light if is_positive else self.theme.negative_light
+        border_color = self.theme.positive_main if is_positive else self.theme.negative_main
+
+        # NUEVO: Solo mostrar botón X si no guardó hoy
+        remove_button = None
+        if not self.is_saved_today:
+            remove_callback = self.remove_positive_tag if is_positive else self.remove_negative_tag
+            remove_button = ft.TextButton(
+                content=ft.Text("×", size=16, color=self.theme.text_secondary),
+                on_click=lambda e, t=tag: remove_callback(t),
+                style=ft.ButtonStyle(padding=ft.padding.all(4))
+            )
+
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Text(
+                                f"{tag.emoji} {tag.name}",
+                                size=14,
+                                weight=ft.FontWeight.W_500,
+                                color=self.theme.text_primary,
+                                expand=True
+                            ),
+                            remove_button if remove_button else ft.Container()
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                    ),
+                    ft.Text(
+                        tag.context[:50] + "..." if len(tag.context) > 50 else tag.context,
+                        size=12,
+                        color=self.theme.text_secondary,
+                        italic=True
+                    )
+                ],
+                spacing=4,
+                tight=True
+            ),
+            bgcolor=bg_color,
+            padding=ft.padding.all(12),
+            border_radius=16,
+            border=ft.border.all(1, border_color),
+            margin=ft.margin.only(bottom=8)
+        )
+
+    def update_worth_it_buttons(self):
+        """Actualizar botones worth_it con el valor cargado"""
+        if not self.worth_it_buttons["yes"] or not self.worth_it_buttons["no"]:
+            return
+
+        for btn_key, btn in self.worth_it_buttons.items():
+            if (btn_key == "yes" and self.worth_it) or (btn_key == "no" and self.worth_it is False):
+                btn.style.bgcolor = self.theme.positive_main if self.worth_it else self.theme.negative_main
+                btn.style.color = "#FFFFFF"
+            else:
+                btn.style.bgcolor = self.theme.surface_variant
+                btn.style.color = self.theme.text_secondary
+
+    def open_positive_tag_dialog(self, e):
+        """Abrir pantalla para añadir momento positivo"""
+        if self.is_saved_today:
+            self.show_error("🔒 No puedes añadir momentos - entrada ya guardada")
+            return
+
+        print("➕ Abriendo diálogo de tag positivo...")
+        self.page = e.page
+        self.page.go("/new_tag?type=positive")
+
+    def open_negative_tag_dialog(self, e):
+        """Abrir pantalla para añadir momento negativo"""
+        if self.is_saved_today:
+            self.show_error("🔒 No puedes añadir momentos - entrada ya guardada")
+            return
+
+        print("➖ Abriendo diálogo de tag negativo...")
+        self.page = e.page
+        self.page.go("/new_tag?type=negative")
+
+    def remove_positive_tag(self, tag):
+        """Eliminar tag positivo"""
+        if self.is_saved_today:
+            return
+
+        print(f"🗑️ Eliminando tag positivo: {tag}")
+        if tag in self.positive_tags:
+            self.positive_tags.remove(tag)
+            self.refresh_positive_tags()
+
+            if hasattr(self, 'page') and self.page:
+                self.page.update()
+
+    def remove_negative_tag(self, tag):
+        """Eliminar tag negativo"""
+        if self.is_saved_today:
+            return
+
+        print(f"🗑️ Eliminando tag negativo: {tag}")
+        if tag in self.negative_tags:
+            self.negative_tags.remove(tag)
+            self.refresh_negative_tags()
+
+            if hasattr(self, 'page') and self.page:
+                self.page.update()
+
+    def set_worth_it(self, value, e):
+        """Establecer si mereció la pena el día"""
+        if self.is_saved_today:
+            return
+
+        print(f"💭 SET WORTH IT: {value}")
+        self.page = e.page
+        self.worth_it = value
+
+        self.update_worth_it_buttons()
+
+        if self.page:
+            self.page.update()
+
+    def chat_ai(self, e):
+        """Iniciar chat con IA"""
+        print("🤖 === CHAT IA ===")
+        self.page = e.page
+
+        reflection_text = self.reflection_field.value.strip() if self.reflection_field.value else ""
+
+        if not reflection_text and not self.positive_tags and not self.negative_tags:
+            self.show_error("Añade contenido para charlar con la IA")
+            return
+
+        try:
             summary = get_daily_summary(
-                reflection=self.reflection_field.value.strip(),
+                reflection=reflection_text,
                 positive_tags=self.positive_tags,
-                negative_tags=self.negative_tags,  # Cambiado de growth_tags
+                negative_tags=self.negative_tags,
                 worth_it=self.worth_it
             )
 
             self.show_daily_summary_dialog(summary)
 
         except Exception as ex:
-            print(f"Error en chat IA: {ex}")
+            print(f"❌ Error en chat IA: {ex}")
             self.show_error("Error iniciando chat")
 
     def show_daily_summary_dialog(self, summary):
-        """Mostrar resumen diario de IA"""
-        dialog = ft.AlertDialog(
-            title=ft.Text("IA - Resumen de tu dia", size=18, weight=ft.FontWeight.W_500),
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text(summary, size=14, color=ZenColors.text_secondary)
-                    ]
-                ),
-                width=350,
-                height=300,
-                bgcolor="#F8FAFC",
-                padding=ft.padding.all(16),
-                border_radius=12
+        """Mostrar resumen diario de IA con tema"""
+        dialog_content = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        summary,
+                        size=14,
+                        color=self.theme.text_secondary,
+                        selectable=True
+                    )
+                ],
+                scroll=ft.ScrollMode.AUTO
             ),
+            width=350,
+            height=300,
+            bgcolor=self.theme.surface,
+            padding=ft.padding.all(16),
+            border_radius=12,
+            border=ft.border.all(1, self.theme.border_color)
+        )
+
+        dialog = ft.AlertDialog(
+            title=ft.Text(
+                "🤖 Resumen de tu día",
+                size=18,
+                weight=ft.FontWeight.W_500,
+                color=self.theme.text_primary
+            ),
+            content=dialog_content,
             actions=[
                 ft.TextButton(
                     "Continuar chat",
-                    on_click=lambda e: self.continue_chat()
+                    on_click=lambda e: self.continue_chat(),
+                    style=ft.ButtonStyle(color=self.theme.accent_primary)
                 ),
                 ft.TextButton(
                     "Gracias",
-                    on_click=lambda e: self.close_dialog()
+                    on_click=lambda e: self.close_dialog(),
+                    style=ft.ButtonStyle(color=self.theme.text_secondary)
                 )
-            ]
+            ],
+            bgcolor=self.theme.surface
         )
 
         self.page.dialog = dialog
@@ -676,67 +949,46 @@ class EntryScreen:
         self.page.update()
 
     def continue_chat(self):
-        """Continuar chat (funcionalidad futura)"""
         self.close_dialog()
-        self.show_success("Chat extendido proximamente")
-
-    def clear_form(self):
-        """Limpiar formulario zen"""
-        self.reflection_field.value = ""
-        self.positive_tags.clear()
-        self.negative_tags.clear()  # Cambiado
-        self.worth_it = None
-
-        # Restablecer botones
-        for btn in self.worth_it_buttons.values():
-            btn.style.bgcolor = "#F1F5F9"
-            btn.style.color = "#4A5568"
-
-        self.refresh_positive_tags()
-        self.refresh_negative_tags()  # Cambiado
-
-        if hasattr(self, 'page') and self.page:
-            self.page.update()
+        self.show_success("Chat extendido próximamente")
 
     def close_dialog(self):
-        """Cerrar diálogo"""
         if self.page and self.page.dialog:
             self.page.dialog.open = False
             self.page.update()
 
     def go_to_calendar(self, e):
-        """Navegar al calendario"""
         self.page = e.page
         self.page.go("/calendar")
 
-    def logout_click(self, e):
-        """Cerrar sesión zen"""
+    def go_to_theme_selector(self, e):
         self.page = e.page
-        self.clear_form()
+        self.page.go("/theme_selector")
+
+    def logout_click(self, e):
+        self.page = e.page
         self.app.navigate_to_login()
 
     def show_error(self, message):
-        """Mostrar error zen"""
+        print(f"❌ MOSTRAR ERROR: {message}")
         if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
-                content=ft.Text(f"ERROR: {message}", color="#FFFFFF"),
-                bgcolor="#F56565"
+                content=ft.Text(f"❌ {message}", color="#FFFFFF"),
+                bgcolor=self.theme.negative_main,
+                duration=3000
             )
             self.page.overlay.append(snack)
             snack.open = True
             self.page.update()
-        else:
-            print(f"ERROR: {message}")
 
     def show_success(self, message):
-        """Mostrar éxito zen"""
+        print(f"✅ MOSTRAR ÉXITO: {message}")
         if hasattr(self, 'page') and self.page:
             snack = ft.SnackBar(
-                content=ft.Text(f"OK: {message}", color="#FFFFFF"),
-                bgcolor="#48BB78"
+                content=ft.Text(f"✅ {message}", color="#FFFFFF"),
+                bgcolor=self.theme.positive_main,
+                duration=3000
             )
             self.page.overlay.append(snack)
             snack.open = True
             self.page.update()
-        else:
-            print(f"OK: {message}")

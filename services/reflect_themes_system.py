@@ -1,6 +1,6 @@
 """
-🌙 Sistema de Temas Profesionales CORREGIDO - ReflectApp
-Sistema centralizado de colores y estilos para modo noche elegante
+🌙 Sistema de Temas MEJORADO - ReflectApp
+Sistema con temas oscuros y claros elegantes
 """
 
 import flet as ft
@@ -10,20 +10,21 @@ import json
 import os
 
 class ThemeType(Enum):
-    """Tipos de temas disponibles"""
+    """Tipos de temas disponibles - ACTUALIZADOS"""
     DEEP_OCEAN = "deep_ocean"
-    MIDNIGHT_PROFESSIONAL = "midnight_professional"
-    NORDIC_NIGHT = "nordic_night"
     ELECTRIC_DARK = "electric_dark"
+    SPRING_LIGHT = "spring_light"        # NUEVO: Tema claro primaveral
+    SUNSET_WARM = "sunset_warm"          # NUEVO: Tema claro cálido
 
 class ReflectTheme:
     """Clase base para definir un tema completo"""
 
-    def __init__(self, name: str, display_name: str, icon: str, description: str):
+    def __init__(self, name: str, display_name: str, icon: str, description: str, is_dark: bool = True):
         self.name = name
         self.display_name = display_name
         self.icon = icon
         self.description = description
+        self.is_dark = is_dark  # NUEVO: Indica si es tema oscuro o claro
 
         # Colores base - deben ser sobrescritos por cada tema
         self.primary_bg = "#000000"
@@ -66,7 +67,8 @@ class DeepOceanTheme(ReflectTheme):
             name="deep_ocean",
             display_name="🌊 Deep Ocean",
             icon="🌊",
-            description="Tranquilo y minimalista"
+            description="Tranquilo y minimalista",
+            is_dark=True
         )
 
         # Fondo principal
@@ -102,94 +104,6 @@ class DeepOceanTheme(ReflectTheme):
         self.border_color = "#1E3A8A"
         self.glass_bg = "#1E3A8A20"
 
-class MidnightProfessionalTheme(ReflectTheme):
-    """💼 Midnight Professional - Negro azulado corporativo"""
-
-    def __init__(self):
-        super().__init__(
-            name="midnight_professional",
-            display_name="💼 Midnight Pro",
-            icon="💼",
-            description="Corporativo y elegante"
-        )
-
-        # Fondo GitHub style
-        self.primary_bg = "#0D1117"
-        self.secondary_bg = "#161B22"
-        self.surface = "#161B22"
-        self.surface_variant = "#21262D"
-
-        # Acentos grises
-        self.accent_primary = "#21262D"
-        self.accent_secondary = "#30363D"
-
-        # Textos
-        self.text_primary = "#F0F6FC"
-        self.text_secondary = "#8B949E"
-        self.text_hint = "#6E7681"
-
-        # Estados GitHub style
-        self.positive_main = "#238636"
-        self.positive_light = "#23863620"
-        self.positive_glow = "#23863640"
-
-        self.negative_main = "#DA3633"
-        self.negative_light = "#DA363320"
-        self.negative_glow = "#DA363340"
-
-        # Gradientes profesionales
-        self.gradient_header = ["#21262D", "#30363D"]
-        self.gradient_button = ["#238636", "#2EA043"]
-
-        # Efectos
-        self.shadow_color = "#00000050"
-        self.border_color = "#21262D"
-        self.glass_bg = "#F0F6FC10"
-
-class NordicNightTheme(ReflectTheme):
-    """🏔️ Nordic Night - Inspirado en temas nórdicos"""
-
-    def __init__(self):
-        super().__init__(
-            name="nordic_night",
-            display_name="🏔️ Nordic Night",
-            icon="🏔️",
-            description="Cálido y acogedor"
-        )
-
-        # Fondo nórdico
-        self.primary_bg = "#2E3440"
-        self.secondary_bg = "#3B4252"
-        self.surface = "#3B4252"
-        self.surface_variant = "#434C5E"
-
-        # Acentos nórdicos
-        self.accent_primary = "#434C5E"
-        self.accent_secondary = "#4C566A"
-
-        # Textos nórdicos
-        self.text_primary = "#ECEFF4"
-        self.text_secondary = "#D8DEE9"
-        self.text_hint = "#A5A9B8"
-
-        # Estados nórdicos
-        self.positive_main = "#A3BE8C"
-        self.positive_light = "#A3BE8C20"
-        self.positive_glow = "#A3BE8C40"
-
-        self.negative_main = "#BF616A"
-        self.negative_light = "#BF616A20"
-        self.negative_glow = "#BF616A40"
-
-        # Gradientes cálidos
-        self.gradient_header = ["#434C5E", "#4C566A"]
-        self.gradient_button = ["#A3BE8C", "#B8CC9B"]
-
-        # Efectos
-        self.shadow_color = "#2E344040"
-        self.border_color = "#434C5E"
-        self.glass_bg = "#ECEFF410"
-
 class ElectricDarkTheme(ReflectTheme):
     """⚡ Electric Dark - Tecnológico con acentos neón"""
 
@@ -198,7 +112,8 @@ class ElectricDarkTheme(ReflectTheme):
             name="electric_dark",
             display_name="⚡ Electric Dark",
             icon="⚡",
-            description="Futurista y moderno"
+            description="Futurista y moderno",
+            is_dark=True
         )
 
         # Fondo eléctrico
@@ -234,20 +149,110 @@ class ElectricDarkTheme(ReflectTheme):
         self.border_color = "#6366F1"
         self.glass_bg = "#6366F120"
 
+class SpringLightTheme(ReflectTheme):
+    """🌸 Spring Light - Tema claro primaveral y fresco"""
+
+    def __init__(self):
+        super().__init__(
+            name="spring_light",
+            display_name="🌸 Spring Light",
+            icon="🌸",
+            description="Fresco y primaveral",
+            is_dark=False  # ¡TEMA CLARO!
+        )
+
+        # Fondos claros
+        self.primary_bg = "#F8FAFC"      # Gris muy claro
+        self.secondary_bg = "#FFFFFF"     # Blanco puro
+        self.surface = "#FFFFFF"          # Blanco puro
+        self.surface_variant = "#F1F5F9"  # Gris muy suave
+
+        # Acentos verdes primaveral
+        self.accent_primary = "#059669"   # Verde esmeralda
+        self.accent_secondary = "#10B981" # Verde menta
+
+        # Textos oscuros para contraste en fondo claro
+        self.text_primary = "#1F2937"     # Gris oscuro
+        self.text_secondary = "#4B5563"   # Gris medio
+        self.text_hint = "#9CA3AF"        # Gris claro
+
+        # Estados con colores vibrantes
+        self.positive_main = "#059669"    # Verde esmeralda
+        self.positive_light = "#ECFDF5"   # Verde muy claro
+        self.positive_glow = "#A7F3D0"    # Verde suave
+
+        self.negative_main = "#DC2626"    # Rojo coral
+        self.negative_light = "#FEF2F2"   # Rosa muy claro
+        self.negative_glow = "#FECACA"    # Rosa suave
+
+        # Gradientes suaves
+        self.gradient_header = ["#059669", "#10B981"]
+        self.gradient_button = ["#059669", "#047857"]
+
+        # Efectos suaves
+        self.shadow_color = "#05966920"
+        self.border_color = "#D1D5DB"     # Borde gris suave
+        self.glass_bg = "#05966910"
+
+class SunsetWarmTheme(ReflectTheme):
+    """🌅 Sunset Warm - Tema claro cálido y acogedor"""
+
+    def __init__(self):
+        super().__init__(
+            name="sunset_warm",
+            display_name="🌅 Sunset Warm",
+            icon="🌅",
+            description="Cálido y acogedor",
+            is_dark=False  # ¡TEMA CLARO!
+        )
+
+        # Fondos cálidos claros
+        self.primary_bg = "#FFF7ED"       # Naranja muy claro
+        self.secondary_bg = "#FFFFFF"      # Blanco puro
+        self.surface = "#FFFFFF"           # Blanco puro
+        self.surface_variant = "#FEF3C7"   # Amarillo muy suave
+
+        # Acentos naranjas cálidos
+        self.accent_primary = "#EA580C"    # Naranja vibrante
+        self.accent_secondary = "#F97316"  # Naranja brillante
+
+        # Textos oscuros para contraste
+        self.text_primary = "#292524"      # Marrón oscuro
+        self.text_secondary = "#57534E"    # Marrón medio
+        self.text_hint = "#A8A29E"         # Marrón claro
+
+        # Estados cálidos
+        self.positive_main = "#059669"     # Verde esmeralda (contraste)
+        self.positive_light = "#F0FDF4"    # Verde muy claro
+        self.positive_glow = "#BBF7D0"     # Verde suave
+
+        self.negative_main = "#DC2626"     # Rojo intenso
+        self.negative_light = "#FEF2F2"    # Rosa muy claro
+        self.negative_glow = "#FECACA"     # Rosa suave
+
+        # Gradientes cálidos
+        self.gradient_header = ["#EA580C", "#F97316"]
+        self.gradient_button = ["#EA580C", "#C2410C"]
+
+        # Efectos cálidos
+        self.shadow_color = "#EA580C20"
+        self.border_color = "#E5E7EB"      # Borde gris neutro
+        self.glass_bg = "#EA580C10"
+
 class ThemeManager:
-    """Gestor central de temas CORREGIDO"""
+    """Gestor central de temas ACTUALIZADO"""
 
     def __init__(self, storage_path: str = "data/theme_settings.json"):
         self.storage_path = storage_path
         self.current_theme = None
-        self.theme_change_callbacks: List[Callable] = []  # NUEVO: Lista de callbacks
+        self.theme_change_callbacks: List[Callable] = []
 
-        # Registrar todos los temas disponibles
+        # Registrar todos los temas disponibles - ACTUALIZADOS
         self.themes = {
             ThemeType.DEEP_OCEAN: DeepOceanTheme(),
-            ThemeType.MIDNIGHT_PROFESSIONAL: MidnightProfessionalTheme(),
-            ThemeType.NORDIC_NIGHT: NordicNightTheme(),
-            ThemeType.ELECTRIC_DARK: ElectricDarkTheme()
+            ThemeType.ELECTRIC_DARK: ElectricDarkTheme(),
+            ThemeType.SPRING_LIGHT: SpringLightTheme(),    # NUEVO
+            ThemeType.SUNSET_WARM: SunsetWarmTheme()       # NUEVO
         }
 
         # Cargar tema guardado o usar por defecto
@@ -329,7 +334,7 @@ class ThemeManager:
 
             data = {
                 'current_theme': self.themes[theme_type].name,
-                'last_updated': str(ft.datetime.now()) if hasattr(ft, 'datetime') else "now"
+                'last_updated': "now"
             }
 
             with open(self.storage_path, 'w') as f:
@@ -340,7 +345,7 @@ class ThemeManager:
         except Exception as e:
             print(f"❌ Error guardando tema: {e}")
 
-# Instancia global del gestor de temas CORREGIDA
+# Instancia global del gestor de temas
 theme_manager = ThemeManager()
 
 def get_theme() -> ReflectTheme:
@@ -356,20 +361,15 @@ def apply_theme_to_page(page: ft.Page) -> None:
     theme = get_theme()
 
     page.bgcolor = theme.primary_bg
+
+    # Configurar tema basado en si es claro u oscuro
+    brightness = ft.Brightness.LIGHT if not theme.is_dark else ft.Brightness.DARK
+
     page.theme = ft.Theme(
-        color_scheme=ft.ColorScheme(
-            primary=theme.accent_primary,
-            primary_container=theme.surface,
-            secondary=theme.accent_secondary,
-            surface=theme.surface,
-            background=theme.primary_bg,
-            on_primary=theme.text_primary,
-            on_surface=theme.text_primary,
-            on_background=theme.text_primary
-        )
+        color_scheme_seed=theme.accent_primary,
     )
 
-    print(f"🎨 Tema aplicado a página: {theme.display_name}")
+    print(f"🎨 Tema aplicado: {theme.display_name} ({'Claro' if not theme.is_dark else 'Oscuro'})")
 
 def create_themed_container(
         content: ft.Control,
@@ -424,7 +424,7 @@ def create_themed_button(
         text_color = "#FFFFFF"
     else:  # primary
         bg_color = theme.accent_primary
-        text_color = theme.text_primary
+        text_color = "#FFFFFF" if theme.is_dark else "#FFFFFF"
 
     button = ft.ElevatedButton(
         text=text,
@@ -538,25 +538,3 @@ class ZenColors:
 
 # Instancia global para compatibilidad
 zen_colors = ZenColors()
-
-# NUEVA FUNCIÓN: Forzar actualización global de temas
-def force_global_theme_refresh():
-    """Forzar refresh del tema en toda la aplicación"""
-    theme = get_theme()
-    print(f"🔄 Refresh global del tema: {theme.display_name}")
-
-    # Notificar a todos los callbacks registrados
-    theme_manager.notify_theme_change(None)  # None significa "refresh general"
-
-if __name__ == "__main__":
-    # Ejemplo de uso
-    print("🌙 Sistema de Temas CORREGIDO - ReflectApp")
-    print("================================")
-
-    for theme_type, theme in theme_manager.get_available_themes().items():
-        print(f"{theme.icon} {theme.display_name}: {theme.description}")
-        print(f"   Fondo: {theme.primary_bg}")
-        print(f"   Superficie: {theme.surface}")
-        print(f"   Positivo: {theme.positive_main}")
-        print(f"   Negativo: {theme.negative_main}")
-        print()

@@ -1,28 +1,10 @@
 import flet as ft
 from datetime import datetime, date, timedelta
 import calendar
-
-class ZenColors:
-    """Colores zen para el calendario"""
-    # Positivos (verde)
-    positive_main = "#48BB78"
-    positive_light = "#E8F5E8"
-
-    # Negativos (rojo)
-    negative_main = "#EF4444"
-    negative_light = "#FEE2E2"
-
-    # Neutrales
-    current_month = "#9CA3AF"  # Gris para mes actual no submiteado
-    future_day = "#F8FAFC"     # Blanco para días futuros
-    neutral = "#E5E7EB"        # Gris neutral
-
-    # Base
-    background = "#F8FAFC"
-    surface = "#FFFFFF"
-    text_primary = "#2D3748"
-    text_secondary = "#4A5568"
-    text_hint = "#A0AEC0"      # Agregado: color para texto de hint
+from services.reflect_themes_system import (
+    get_theme, create_themed_container, create_themed_button,
+    create_gradient_header
+)
 
 class CalendarScreen:
 
@@ -43,11 +25,16 @@ class CalendarScreen:
         # UI Components
         self.page = None
         self.main_container = None
+        self.theme = get_theme()  # NUEVO: Tema actual
 
-    # ====== CABECERAS DE MÉTODOS DE NEGOCIO (SIN IMPLEMENTAR) ======
+    def update_theme(self):
+        """Actualizar tema - NUEVO MÉTODO"""
+        self.theme = get_theme()
+        print(f"🎨 Calendar: Tema actualizado a {self.theme.display_name}")
+
+    # ====== MÉTODOS DE NEGOCIO (SIN CAMBIOS) ======
 
     def load_year_data(self, year):
-
         try:
             from services import db
 
@@ -62,7 +49,6 @@ class CalendarScreen:
 
             print(f"🔍 Cargando datos del año {year} para usuario {user_id}")
 
-            # Usar el método de base de datos que acabamos de implementar
             year_data = db.get_year_summary(user_id, year)
 
             print(f"✅ Datos del año cargados: {year_data}")
@@ -80,7 +66,6 @@ class CalendarScreen:
         return empty_data
 
     def load_month_data(self, year, month):
-
         try:
             from services import db
 
@@ -95,7 +80,6 @@ class CalendarScreen:
 
             print(f"🔍 Cargando datos del mes {year}-{month} para usuario {user_id}")
 
-            # Usar el método de base de datos
             month_data = db.get_month_summary(user_id, year, month)
 
             print(f"✅ Datos del mes cargados: {month_data}")
@@ -106,7 +90,6 @@ class CalendarScreen:
             return {}
 
     def get_day_details(self, year, month, day):
-
         try:
             from services import db
 
@@ -121,7 +104,6 @@ class CalendarScreen:
 
             print(f"🔍 Obteniendo detalles del día {year}-{month}-{day}")
 
-            # Usar el método de base de datos
             day_entry = db.get_day_entry(user_id, year, month, day)
 
             if not day_entry:
@@ -157,77 +139,59 @@ class CalendarScreen:
         return check_date > today
 
     def calculate_month_color(self, month_data):
-
         if month_data["total"] == 0:
-            return ZenColors.neutral
+            return self.theme.surface_variant  # CAMBIADO: Usar tema
 
         if month_data["positive"] > month_data["negative"]:
-            return ZenColors.positive_main
+            return self.theme.positive_main
         elif month_data["negative"] > month_data["positive"]:
-            return ZenColors.negative_main
+            return self.theme.negative_main
         else:
-            return ZenColors.neutral
+            return self.theme.surface_variant  # CAMBIADO: Usar tema
 
     def calculate_day_color(self, day_data, year, month, day):
-
-        # Día futuro = blanco
+        # Día futuro = surface
         if self.is_future_day(year, month, day):
-            return ZenColors.future_day
+            return self.theme.surface  # CAMBIADO: Usar tema
 
-        # Día actual sin submitear = gris
+        # Día actual sin submitear = accent secundario
         if self.is_current_day(year, month, day) and not day_data.get("submitted", False):
-            return ZenColors.current_month
+            return self.theme.accent_secondary  # CAMBIADO: Usar tema
 
         # Día con datos = color según balance
         if day_data.get("submitted", False):
             if day_data["positive"] > day_data["negative"]:
-                return ZenColors.positive_main
+                return self.theme.positive_main
             elif day_data["negative"] > day_data["positive"]:
-                return ZenColors.negative_main
+                return self.theme.negative_main
             else:
-                return ZenColors.neutral
+                return self.theme.surface_variant  # CAMBIADO: Usar tema
 
-        # Sin datos = gris neutral
-        return ZenColors.neutral
+        # Sin datos = surface variant
+        return self.theme.surface_variant  # CAMBIADO: Usar tema
 
-    # ====== UI METHODS ======
+    # ====== UI METHODS ACTUALIZADOS CON TEMAS ======
 
     def build(self):
-        """Construir vista principal del calendario"""
+        """Construir vista principal del calendario CON TEMAS"""
+        # Actualizar tema
+        self.update_theme()
 
         # Cargar datos iniciales del año
         print(f"🔄 Cargando datos iniciales para el año {self.selected_year}")
         self.months_data = self.load_year_data(self.selected_year)
 
-        # Ejecutar pruebas (solo para debug)
-        self.test_calendar_data()
+        # Header con tema
+        back_button = ft.TextButton(
+            "← Volver",
+            on_click=self.go_back,
+            style=ft.ButtonStyle(color="#FFFFFF")
+        )
 
-        # Header
-        header = ft.Container(
-            content=ft.Row(
-                [
-                    ft.TextButton(
-                        "← Volver",
-                        on_click=self.go_back,
-                        style=ft.ButtonStyle(color="#FFFFFF")
-                    ),
-                    ft.Text(
-                        "Calendario Zen",
-                        size=20,
-                        weight=ft.FontWeight.W_500,
-                        color="#FFFFFF",
-                        expand=True,
-                        text_align=ft.TextAlign.CENTER
-                    ),
-                    ft.Container(width=80)
-                ]
-            ),
-            padding=ft.padding.all(20),
-            gradient=ft.LinearGradient(
-                begin=ft.alignment.center_left,
-                end=ft.alignment.center_right,
-                colors=["#667EEA", "#764BA2"]
-            )
+        header = create_gradient_header(
+            title="📅 Calendario Zen",
+            left_button=back_button,
+            theme=self.theme
         )
 
         # Contenedor principal que cambiará según la vista
@@ -237,14 +201,14 @@ class CalendarScreen:
             padding=ft.padding.all(20)
         )
 
-        # Vista completa
+        # Vista completa CON TEMA
         view = ft.View(
             "/calendar",
             [
                 header,
                 self.main_container
             ],
-            bgcolor=ZenColors.background,
+            bgcolor=self.theme.primary_bg,  # CAMBIADO: Usar tema
             padding=0,
             spacing=0
         )
@@ -252,34 +216,34 @@ class CalendarScreen:
         return view
 
     def build_months_view(self):
-        """Construir vista de meses del año"""
+        """Construir vista de meses del año CON TEMAS"""
 
-        # Título del año con navegación
+        # Título del año con navegación TEMÁTICA
         year_header = ft.Row(
             [
-                ft.TextButton(
+                create_themed_button(
                     "<",
-                    on_click=lambda e: self.change_year(-1),
-                    style=ft.ButtonStyle(
-                        color=ZenColors.text_primary,
-                        text_style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)
-                    )
+                    lambda e: self.change_year(-1),
+                    theme=self.theme,
+                    button_type="primary",
+                    width=50,
+                    height=50
                 ),
                 ft.Text(
                     str(self.selected_year),
                     size=28,
                     weight=ft.FontWeight.BOLD,
-                    color=ZenColors.text_primary,
+                    color=self.theme.text_primary,  # CAMBIADO: Usar tema
                     expand=True,
                     text_align=ft.TextAlign.CENTER
                 ),
-                ft.TextButton(
+                create_themed_button(
                     ">",
-                    on_click=lambda e: self.change_year(1),
-                    style=ft.ButtonStyle(
-                        color=ZenColors.text_primary,
-                        text_style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)
-                    )
+                    lambda e: self.change_year(1),
+                    theme=self.theme,
+                    button_type="primary",
+                    width=50,
+                    height=50
                 )
             ],
             alignment=ft.MainAxisAlignment.CENTER
@@ -326,7 +290,7 @@ class CalendarScreen:
         )
 
     def create_month_card(self, month_num, month_name):
-        """Crear tarjeta de mes"""
+        """Crear tarjeta de mes CON TEMAS"""
 
         # Obtener datos REALES del mes
         if hasattr(self, 'months_data') and self.months_data:
@@ -343,13 +307,13 @@ class CalendarScreen:
         current_year = datetime.now().year
         is_current = month_num == current_month and self.selected_year == current_year
 
-        # Color de fondo
+        # Color de fondo y texto CON TEMAS
         if is_current and month_data["total"] == 0:
-            bg_color = ZenColors.current_month
-            text_color = "#FFFFFF"
+            bg_color = self.theme.accent_secondary
+            text_color = "#FFFFFF" if self.theme.is_dark else self.theme.text_primary
         else:
             bg_color = month_color
-            text_color = "#FFFFFF" if month_color != ZenColors.neutral else ZenColors.text_primary
+            text_color = "#FFFFFF" if month_color in [self.theme.positive_main, self.theme.negative_main] else self.theme.text_primary
 
         return ft.Container(
             content=ft.Column(
@@ -387,47 +351,50 @@ class CalendarScreen:
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=4,
-                color="#00000020",
+                color=self.theme.shadow_color,  # CAMBIADO: Usar tema
                 offset=ft.Offset(0, 2)
             )
         )
 
     def build_days_view(self):
-        """Construir vista de días del mes seleccionado"""
+        """Construir vista de días del mes seleccionado CON TEMAS"""
 
         month_name = calendar.month_name[self.selected_month]
 
-        # Header del mes
+        # Header del mes CON BOTÓN TEMÁTICO
         month_header = ft.Row(
             [
-                ft.TextButton(
+                create_themed_button(
                     "← Meses",
-                    on_click=lambda e: self.go_to_months_view(),
-                    style=ft.ButtonStyle(color=ZenColors.text_primary)
+                    lambda e: self.go_to_months_view(),
+                    theme=self.theme,
+                    button_type="primary",
+                    width=100,
+                    height=40
                 ),
                 ft.Text(
                     f"{month_name} {self.selected_year}",
                     size=24,
                     weight=ft.FontWeight.BOLD,
-                    color=ZenColors.text_primary,
+                    color=self.theme.text_primary,  # CAMBIADO: Usar tema
                     expand=True,
                     text_align=ft.TextAlign.CENTER
                 ),
-                ft.Container(width=80)
+                ft.Container(width=100)
             ],
             alignment=ft.MainAxisAlignment.CENTER
         )
 
-        # Días de la semana
+        # Días de la semana CON TEMA
         weekdays = ft.Row(
             [
-                ft.Text("L", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
-                ft.Text("M", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
-                ft.Text("X", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
-                ft.Text("J", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
-                ft.Text("V", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
-                ft.Text("S", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
-                ft.Text("D", size=12, weight=ft.FontWeight.BOLD, color=ZenColors.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("L", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("M", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("X", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("J", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("V", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("S", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
+                ft.Text("D", size=12, weight=ft.FontWeight.BOLD, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER, width=40),
             ],
             alignment=ft.MainAxisAlignment.CENTER
         )
@@ -470,7 +437,7 @@ class CalendarScreen:
         return ft.Column(rows, spacing=8)
 
     def create_day_cell(self, day):
-        """Crear celda de día individual"""
+        """Crear celda de día individual CON TEMAS"""
 
         # Obtener datos REALES del día
         if hasattr(self, 'days_data') and self.days_data:
@@ -486,13 +453,13 @@ class CalendarScreen:
         is_future = self.is_future_day(self.selected_year, self.selected_month, day)
         is_current = self.is_current_day(self.selected_year, self.selected_month, day)
 
-        # Color del texto
-        if day_color == ZenColors.future_day:
-            text_color = ZenColors.text_hint
-        elif day_color in [ZenColors.positive_main, ZenColors.negative_main]:
+        # Color del texto CON TEMA
+        if day_color == self.theme.surface:
+            text_color = self.theme.text_hint
+        elif day_color in [self.theme.positive_main, self.theme.negative_main]:
             text_color = "#FFFFFF"
         else:
-            text_color = ZenColors.text_primary
+            text_color = self.theme.text_primary
 
         # Callback de click
         on_click_handler = None
@@ -501,6 +468,11 @@ class CalendarScreen:
                 on_click_handler = lambda e, d=day: self.go_to_current_day()
             else:
                 on_click_handler = lambda e, d=day: self.view_past_day(d)
+
+        # Border para día actual CON TEMA
+        border = None
+        if is_current:
+            border = ft.border.all(2, self.theme.accent_primary)
 
         return ft.Container(
             content=ft.Text(
@@ -516,52 +488,55 @@ class CalendarScreen:
             border_radius=8,
             alignment=ft.alignment.center,
             on_click=on_click_handler,
-            border=ft.border.all(2, "#667EEA") if is_current else None
+            border=border
         )
 
     def build_legend(self):
-        """Construir leyenda de colores"""
-        return ft.Container(
+        """Construir leyenda de colores CON TEMAS"""
+        return create_themed_container(
             content=ft.Column(
                 [
-                    ft.Text("Leyenda:", size=14, weight=ft.FontWeight.W_500, color=ZenColors.text_primary),
+                    ft.Text(
+                        "Leyenda:",
+                        size=14,
+                        weight=ft.FontWeight.W_500,
+                        color=self.theme.text_primary
+                    ),
                     ft.Container(height=8),
                     ft.Row(
                         [
-                            self.create_legend_item(ZenColors.positive_main, "Días positivos"),
-                            self.create_legend_item(ZenColors.negative_main, "Días negativos"),
+                            self.create_legend_item(self.theme.positive_main, "Días positivos"),
+                            self.create_legend_item(self.theme.negative_main, "Días negativos"),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER
                     ),
                     ft.Container(height=8),
                     ft.Row(
                         [
-                            self.create_legend_item(ZenColors.current_month, "Día actual"),
-                            self.create_legend_item(ZenColors.future_day, "Días futuros"),
+                            self.create_legend_item(self.theme.accent_secondary, "Día actual"),
+                            self.create_legend_item(self.theme.surface, "Días futuros"),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER
                     )
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER
             ),
-            padding=ft.padding.all(16),
-            bgcolor=ZenColors.surface,
-            border_radius=12,
-            border=ft.border.all(1, "#E5E7EB")
+            theme=self.theme,
+            border_radius=12
         )
 
     def create_legend_item(self, color, label):
-        """Crear item de leyenda"""
+        """Crear item de leyenda CON TEMAS"""
         return ft.Row(
             [
                 ft.Container(width=16, height=16, bgcolor=color, border_radius=4),
                 ft.Container(width=8),
-                ft.Text(label, size=12, color=ZenColors.text_secondary)
+                ft.Text(label, size=12, color=self.theme.text_secondary)
             ],
             spacing=0
         )
 
-    # ====== EVENT HANDLERS ======
+    # ====== EVENT HANDLERS ACTUALIZADOS ======
 
     def change_year(self, direction):
         """Cambiar año (+1 o -1)"""
@@ -650,26 +625,3 @@ class CalendarScreen:
         print("🧪 TESTING - Pruebas completadas")
 
 # ====== EJEMPLO DE USO ======
-
-if __name__ == "__main__":
-    def main(page: ft.Page):
-        page.title = "Calendario Zen"
-        page.window.width = 400
-        page.window.height = 720
-
-        def on_go_to_entry():
-            print("Navegando a entry...")
-
-        def on_view_day(year, month, day, details):
-            print(f"Ver día {year}-{month}-{day}: {details}")
-
-        calendar_screen = CalendarScreen(
-            user_data={"name": "Usuario"},
-            on_go_to_entry=on_go_to_entry,
-            on_view_day=on_view_day
-        )
-
-        page.views.append(calendar_screen.build())
-        page.update()
-
-    ft.app(target=main)
