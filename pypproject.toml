@@ -1,0 +1,32 @@
+[build-system]
+requires = ["flet"]
+
+[project]
+name = "reflectapp"
+version = "1.0.0"
+description = "Tu espacio de reflexión diaria"
+authors = [{name = "Tu Nombre", email = "tu@email.com"}]
+license = {text = "MIT"}
+dependencies = [
+    "flet>=0.24.1",
+    "python-dotenv>=1.0.0",
+    "google-generativeai>=0.3.0"
+]
+
+[tool.flet]
+name = "ReflectApp"
+description = "Tu espacio de reflexión diaria zen"
+module = "app_mobile"
+icon = "assets/icon.png"  # Opcional
+splash = "assets/splash.png"  # Opcional
+
+[tool.flet.android]
+package = "com.reflectapp.zen"
+min_sdk_version = 21
+target_sdk_version = 33
+compile_sdk_version = 33
+permissions = [
+    "android.permission.INTERNET",
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "android.permission.READ_EXTERNAL_STORAGE"
+]

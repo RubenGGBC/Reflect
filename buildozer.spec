@@ -347,6 +347,13 @@ ios.codesign.allowed = false
 # (str) URL pointing to a large icon (512x512px) to be used by iTunes
 # This option should be defined along with `app_url` and `display_image_url` options.
 #ios.manifest.full_size_image_url =
+android.permissions = INTERNET, WAKE_LOCK, VIBRATE, RECEIVE_BOOT_COMPLETED, SCHEDULE_EXACT_ALARM
+
+# Añadir servicios para notificaciones programadas (opcional)
+# android.add_src = services/android
+
+# Icono para notificaciones (opcional)
+# icon.filename = %(source.dir)s/assets/notification_icon.png
 
 [buildozer]
 

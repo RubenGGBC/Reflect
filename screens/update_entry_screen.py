@@ -1,6 +1,6 @@
 """
-📝 Entry Screen CORREGIDA COMPLETA - ReflectApp
-Pantalla principal con sistema de persistencia mejorado y protecciones
+📝 Entry Screen COMPLETA CORREGIDA - ReflectApp
+Pantalla principal con sistema de persistencia mejorado, protecciones y chat IA funcional
 """
 
 import flet as ft
@@ -19,7 +19,6 @@ class DynamicTag:
         self.ai_feedback = ai_feedback
         self.emoji = emoji or ("+" if tag_type == "positive" else "-")
 
-    @classmethod
     def from_simple_tag(cls, simple_tag):
         """Crear DynamicTag desde SimpleTag"""
         return cls(
@@ -51,12 +50,14 @@ class DynamicTag:
     def __str__(self):
         return f"DynamicTag({self.emoji} {self.name} - {self.type})"
 
+
 class EntryScreen:
     def __init__(self, app):
         self.app = app
         self.page = None
         self.current_user = None
         self.theme = get_theme()
+
 
         # Campos principales
         self.reflection_field = None
@@ -74,7 +75,7 @@ class EntryScreen:
         self.data_loaded = False
         self.is_saved_today = False  # Para bloquear cambios después de guardar
 
-        print("🏗️ EntryScreen inicializada con sistema mejorado")
+    print("🏗️ EntryScreen inicializada con sistema mejorado")
 
     def set_user(self, user_data):
         """Establecer usuario y marcar datos como no cargados"""
@@ -911,8 +912,8 @@ class EntryScreen:
             print(f"❌ Error reconstruyendo vista: {e}")
 
     def chat_ai(self, e):
-        """Abrir chat con IA - VERSIÓN CORREGIDA que lee datos reales"""
-        print("🧠 === ABRIENDO CHAT IA CORREGIDO ===")
+        """Abrir chat con IA - VERSIÓN CORREGIDA que usa integración simple"""
+        print("🧠 === ABRIENDO CHAT IA CON INTEGRACIÓN SIMPLE ===")
         self.page = e.page
 
         if not self.current_user:
@@ -920,492 +921,166 @@ class EntryScreen:
             return
 
         try:
-            # PASO 1: Cargar datos REALES de hoy desde la base de datos
-            from services import db
-            user_id = self.current_user['id']
+            # PASO 1: Obtener datos REALES del campo y memoria
+            print(f"👤 Usuario: {self.current_user.get('name')} (ID: {self.current_user.get('id')})")
 
-            print(f"👤 Cargando datos reales para usuario ID: {user_id}")
-
-            # Usar el método que combina datos guardados + temporales
-            today_data = db.get_today_entry_with_temp_tags(user_id)
-
-            print(f"📊 Datos cargados de la DB:")
-            print(f"   Reflexión: {len(today_data.get('reflection', ''))} caracteres")
-            print(f"   Tags positivos: {len(today_data.get('positive_tags', []))}")
-            print(f"   Tags negativos: {len(today_data.get('negative_tags', []))}")
-            print(f"   Worth it: {today_data.get('worth_it')}")
-            print(f"   Tiene entrada guardada: {today_data.get('has_saved_entry', False)}")
-            print(f"   Tiene tags temporales: {today_data.get('has_temp_tags', False)}")
-
-            # PASO 2: Obtener reflexión actual (campo + DB)
+            # Obtener reflexión del campo actual
             reflection_from_field = self.reflection_field.value.strip() if self.reflection_field.value else ""
-            reflection_from_db = today_data.get('reflection', '')
 
-            # Usar la reflexión más completa
-            final_reflection = reflection_from_field if reflection_from_field else reflection_from_db
-
-            print(f"📝 Reflexión final a usar: {len(final_reflection)} caracteres")
-            if final_reflection:
-                print(f"📝 Primeras 100 chars: {final_reflection[:100]}...")
-
-            # PASO 3: Obtener tags reales (memoria + DB)
-            # Tags positivos: combinar memoria + DB
-            final_positive_tags = []
-
-            # Añadir tags de memoria (los que están en la pantalla)
+            # Obtener tags de memoria
+            positive_tags_data = []
             for tag in self.positive_tags:
-                final_positive_tags.append({
+                positive_tags_data.append({
                     'name': tag.name,
                     'context': tag.context,
                     'emoji': tag.emoji,
                     'type': 'positive'
                 })
 
-            # Añadir tags de DB que no estén ya en memoria
-            db_positive_tags = today_data.get('positive_tags', [])
-            for db_tag in db_positive_tags:
-                # Verificar si ya existe en memoria
-                exists = any(tag.name == db_tag.get('name') for tag in self.positive_tags)
-                if not exists:
-                    final_positive_tags.append(db_tag)
-
-            # Tags negativos: mismo proceso
-            final_negative_tags = []
-
+            negative_tags_data = []
             for tag in self.negative_tags:
-                final_negative_tags.append({
+                negative_tags_data.append({
                     'name': tag.name,
                     'context': tag.context,
                     'emoji': tag.emoji,
                     'type': 'negative'
                 })
 
-            db_negative_tags = today_data.get('negative_tags', [])
-            for db_tag in db_negative_tags:
-                exists = any(tag.name == db_tag.get('name') for tag in self.negative_tags)
-                if not exists:
-                    final_negative_tags.append(db_tag)
+            # Obtener worth_it de memoria
+            final_worth_it = self.worth_it
 
-            # PASO 4: Worth it (memoria o DB)
-            final_worth_it = self.worth_it if self.worth_it is not None else today_data.get('worth_it')
+            print(f"📊 DATOS PARA EL CHAT:")
+            print(f"   📝 Reflexión: {'SÍ' if reflection_from_field else 'NO'} ({len(reflection_from_field)} chars)")
+            print(f"   ➕ Tags positivos: {len(positive_tags_data)}")
+            print(f"   ➖ Tags negativos: {len(negative_tags_data)}")
+            print(f"   💭 Worth it: {final_worth_it}")
 
-            print(f"📊 DATOS FINALES PARA EL CHAT:")
-            print(f"   Reflexión: {'SÍ' if final_reflection else 'NO'} ({len(final_reflection)} chars)")
-            print(f"   Tags positivos: {len(final_positive_tags)}")
-            print(f"   Tags negativos: {len(final_negative_tags)}")
-            print(f"   Worth it: {final_worth_it}")
+            # PASO 2: Validar que hay contenido mínimo
+            total_content = len(reflection_from_field) + len(positive_tags_data) + len(negative_tags_data)
 
-            # PASO 5: Validar que hay contenido
-            if not final_reflection and not final_positive_tags and not final_negative_tags:
+            if total_content == 0:
                 self.show_error("No hay contenido del día para analizar. Escribe una reflexión o añade algunos momentos.")
                 return
 
-            # PASO 6: Crear contexto para el chat
-            chat_context = {
-                'reflection': final_reflection,
-                'positive_tags': final_positive_tags,
-                'negative_tags': final_negative_tags,
+            if len(reflection_from_field) < 10 and total_content < 2:
+                self.show_error("Añade más contenido para tener una conversación significativa con la IA.")
+                return
+
+            # PASO 3: Preparar contexto usando integración simple
+            print("🔗 Preparando contexto con integración simple...")
+
+            try:
+                from services.simple_ai_integration import prepare_entry_for_chat
+
+                # Preparar contexto
+                chat_context = prepare_entry_for_chat(
+                    reflection_text=reflection_from_field,
+                    positive_tags=positive_tags_data,
+                    negative_tags=negative_tags_data,
+                    worth_it=final_worth_it,
+                    user_data=self.current_user
+                )
+
+                print("✅ Contexto preparado con integración simple")
+
+                # Verificar que el contexto es válido
+                if not chat_context.get('has_content', False):
+                    error_msg = chat_context.get('error', 'Error preparando contexto')
+                    self.show_error(f"Error preparando chat: {error_msg}")
+                    return
+
+            except ImportError as e:
+                print(f"❌ Error importando integración simple: {e}")
+                self.show_error("Servicio de chat no disponible. Verifica la configuración.")
+                return
+            except Exception as e:
+                print(f"❌ Error preparando contexto: {e}")
+                self.show_error("Error técnico preparando el chat.")
+                return
+
+            # PASO 4: Guardar contexto en la app para que lo use AIChatScreen
+            print("💾 Guardando contexto en la app...")
+
+            # Crear contexto compatible con AIChatScreen
+            app_chat_context = {
+                'reflection': reflection_from_field,
+                'positive_tags': positive_tags_data,
+                'negative_tags': negative_tags_data,
                 'worth_it': final_worth_it,
                 'user': self.current_user,
-                'data_source': {
-                    'has_saved_entry': today_data.get('has_saved_entry', False),
-                    'has_temp_tags': today_data.get('has_temp_tags', False),
-                    'has_field_text': bool(reflection_from_field)
-                }
+                'prepared_context': chat_context,  # Contexto ya preparado por integración simple
+                'timestamp': chat_context.get('timestamp')
             }
 
-            # PASO 7: Guardar contexto en la app
-            self.app.chat_context = chat_context
+            # Guardar en la app
+            if hasattr(self.app, 'chat_context'):
+                self.app.chat_context = app_chat_context
+            else:
+                print("⚠️ La app no tiene atributo chat_context")
 
-            print("✅ Contexto del chat creado exitosamente")
+            print("✅ Contexto guardado en la app")
+
+            # PASO 5: Mostrar resumen al usuario
+            try:
+                from services.simple_ai_integration import get_chat_summary
+                summary = get_chat_summary(chat_context)
+                print(f"📊 Resumen del chat: {summary}")
+            except:
+                summary = f"Reflexión, {len(positive_tags_data)} momentos positivos, {len(negative_tags_data)} momentos negativos"
+
+            # PASO 6: Navegar al chat
             print("🛣️ Navegando a /ai_chat")
-
-            # PASO 8: Navegar al chat
             self.page.go("/ai_chat")
 
+            # Mostrar mensaje de éxito
+            print("✅ === NAVEGACIÓN AL CHAT COMPLETADA ===")
+
         except Exception as ex:
-            print(f"❌ ERROR CRÍTICO cargando datos para chat: {ex}")
+            print(f"❌ ERROR CRÍTICO en chat_ai: {ex}")
             import traceback
             traceback.print_exc()
-            self.show_error("Error cargando datos del día. Intenta de nuevo.")
+            self.show_error("Error inesperado iniciando el chat. Revisa la consola para más detalles.")
 
-    def debug_current_data(self):
-        """Método helper para debuggear qué datos tenemos actualmente"""
-        print("🔍 === DEBUG DATOS ACTUALES ===")
+    def debug_chat_data(self):
+        """Método helper para debuggear datos del chat - AÑADIR A EntryScreen"""
+        print("🔍 === DEBUG DATOS PARA CHAT ===")
 
         if not self.current_user:
             print("❌ No hay usuario actual")
-            return
+            return False
 
         print(f"👤 Usuario: {self.current_user.get('name')} (ID: {self.current_user.get('id')})")
 
-        # Datos en memoria
+        # Datos del campo
         reflection_text = self.reflection_field.value.strip() if self.reflection_field.value else ""
         print(f"📝 Reflexión en campo: {len(reflection_text)} caracteres")
+        if reflection_text:
+            print(f"📝 Primeros 100 chars: {reflection_text[:100]}...")
+
+        # Datos de memoria
         print(f"➕ Tags positivos en memoria: {len(self.positive_tags)}")
+        for i, tag in enumerate(self.positive_tags):
+            print(f"    {i+1}. {tag.emoji} {tag.name}: {tag.context[:50]}...")
+
         print(f"➖ Tags negativos en memoria: {len(self.negative_tags)}")
+        for i, tag in enumerate(self.negative_tags):
+            print(f"    {i+1}. {tag.emoji} {tag.name}: {tag.context[:50]}...")
+
         print(f"💭 Worth it en memoria: {self.worth_it}")
 
-        # Datos en DB
-        try:
-            from services import db
-            user_id = self.current_user['id']
-            today_data = db.get_today_entry_with_temp_tags(user_id)
+        # Validar contenido mínimo
+        total_content = len(reflection_text) + len(self.positive_tags) + len(self.negative_tags)
+        print(f"📊 Total de contenido: {total_content}")
 
-            print(f"📊 DATOS EN DB:")
-            print(f"   Reflexión guardada: {len(today_data.get('reflection', ''))} caracteres")
-            print(f"   Tags positivos DB: {len(today_data.get('positive_tags', []))}")
-            print(f"   Tags negativos DB: {len(today_data.get('negative_tags', []))}")
-            print(f"   Worth it DB: {today_data.get('worth_it')}")
-            print(f"   Entrada guardada: {today_data.get('has_saved_entry', False)}")
-            print(f"   Tags temporales: {today_data.get('has_temp_tags', False)}")
-
-        except Exception as e:
-            print(f"❌ Error cargando datos de DB: {e}")
-
-        print("🔍 === FIN DEBUG ===")
-
-    def test_chat_data(self, e):
-        """Método de prueba para verificar qué datos tenemos - AÑADIR TEMPORALMENTE"""
-        print("🧪 === PROBANDO DATOS PARA CHAT ===")
-        self.debug_current_data()
-        print("🧪 === FIN PRUEBA ===")
-
-    def show_ai_loading(self):
-        """Mostrar indicador de carga mientras la IA procesa"""
-        loading_dialog = ft.AlertDialog(
-            title=ft.Text(
-                "🧠 Analizando tu día...",
-                size=18,
-                weight=ft.FontWeight.W_500,
-                color=self.theme.text_primary
-            ),
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.ProgressRing(width=16, height=16, stroke_width=2),
-                        ft.Container(height=16),
-                        ft.Text(
-                            "La IA está procesando tu reflexión y momentos del día.\nEsto puede tomar unos segundos...",
-                            size=14,
-                            color=self.theme.text_secondary,
-                            text_align=ft.TextAlign.CENTER
-                        )
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    tight=True
-                ),
-                width=280,
-                padding=ft.padding.all(20)
-            ),
-            bgcolor=self.theme.surface,
-            modal=True
-        )
-
-        self.page.dialog = loading_dialog
-        loading_dialog.open = True
-        self.page.update()
-
-    def hide_ai_loading(self):
-        """Ocultar indicador de carga"""
-        if self.page.dialog:
-            self.page.dialog.open = False
-            self.page.update()
-
-    def show_ai_chat_dialog(self, ai_response, context):
-        """Mostrar diálogo de chat mejorado con la IA"""
-        self.hide_ai_loading()  # Ocultar loading primero
-
-        # Campo para responder a la IA
-        user_response_field = ft.TextField(
-            label="Tu respuesta (opcional)",
-            hint_text="¿Quieres contarle algo más a la IA?",
-            multiline=True,
-            min_lines=2,
-            max_lines=4,
-            border_radius=12,
-            bgcolor=self.theme.surface,
-            border_color=self.theme.border_color,
-            focused_border_color=self.theme.accent_primary
-        )
-
-        # Área de conversación
-        conversation_area = ft.Column(
-            [
-                # Respuesta inicial de la IA
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Row(
-                                [
-                                    ft.Text("🧠", size=16),
-                                    ft.Text(
-                                        "IA Especialista en Salud Mental",
-                                        size=14,
-                                        weight=ft.FontWeight.W_500,
-                                        color=self.theme.accent_primary
-                                    )
-                                ],
-                                spacing=8
-                            ),
-                            ft.Container(height=8),
-                            ft.Text(
-                                ai_response,
-                                size=14,
-                                color=self.theme.text_secondary,
-                                selectable=True
-                            )
-                        ]
-                    ),
-                    bgcolor=self.theme.positive_light,
-                    padding=ft.padding.all(16),
-                    border_radius=12,
-                    border=ft.border.all(1, self.theme.positive_main)
-                )
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            spacing=16
-        )
-
-        def send_user_response(e):
-            """Enviar respuesta del usuario a la IA"""
-            user_message = user_response_field.value.strip()
-            if not user_message:
-                return
-
-            # Añadir mensaje del usuario a la conversación
-            user_message_container = ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.Text("👤", size=16),
-                                ft.Text(
-                                    "Tú",
-                                    size=14,
-                                    weight=ft.FontWeight.W_500,
-                                    color=self.theme.accent_primary
-                                )
-                            ],
-                            spacing=8
-                        ),
-                        ft.Container(height=8),
-                        ft.Text(
-                            user_message,
-                            size=14,
-                            color=self.theme.text_secondary
-                        )
-                    ]
-                ),
-                bgcolor=self.theme.surface_variant,
-                padding=ft.padding.all(16),
-                border_radius=12,
-                border=ft.border.all(1, self.theme.border_color)
-            )
-
-            conversation_area.controls.append(user_message_container)
-            user_response_field.value = ""
-
-            # Mostrar indicador de "IA escribiendo..."
-            typing_indicator = ft.Container(
-                content=ft.Row(
-                    [
-                        ft.Text("🧠", size=16),
-                        ft.Text("Escribiendo...", size=14, color=self.theme.text_hint, italic=True),
-                        ft.ProgressRing(width=12, height=12, stroke_width=2)
-                    ],
-                    spacing=8
-                ),
-                padding=ft.padding.all(16)
-            )
-
-            conversation_area.controls.append(typing_indicator)
-            self.page.update()
-
-            # Generar respuesta de la IA
-            try:
-                from services.mental_health_ia import continue_ai_conversation
-
-                # Crear contexto de la conversación
-                conversation_context = f"Análisis inicial: {ai_response}"
-
-                ai_followup = continue_ai_conversation(conversation_context, user_message)
-
-                # Quitar indicador de escritura
-                conversation_area.controls.remove(typing_indicator)
-
-                # Añadir respuesta de la IA
-                ai_response_container = ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Row(
-                                [
-                                    ft.Text("🧠", size=16),
-                                    ft.Text(
-                                        "IA Especialista",
-                                        size=14,
-                                        weight=ft.FontWeight.W_500,
-                                        color=self.theme.accent_primary
-                                    )
-                                ],
-                                spacing=8
-                            ),
-                            ft.Container(height=8),
-                            ft.Text(
-                                ai_followup,
-                                size=14,
-                                color=self.theme.text_secondary,
-                                selectable=True
-                            )
-                        ]
-                    ),
-                    bgcolor=self.theme.positive_light,
-                    padding=ft.padding.all(16),
-                    border_radius=12,
-                    border=ft.border.all(1, self.theme.positive_main)
-                )
-
-                conversation_area.controls.append(ai_response_container)
-                self.page.update()
-
-            except Exception as ex:
-                print(f"❌ Error en respuesta de IA: {ex}")
-                # Quitar indicador de escritura
-                if typing_indicator in conversation_area.controls:
-                    conversation_area.controls.remove(typing_indicator)
-
-                # Mostrar mensaje de error
-                error_container = ft.Container(
-                    content=ft.Text(
-                        "❌ Hubo un error procesando tu mensaje. La IA no pudo responder.",
-                        size=14,
-                        color=self.theme.negative_main
-                    ),
-                    padding=ft.padding.all(16)
-                )
-                conversation_area.controls.append(error_container)
-                self.page.update()
-
-        # Contenido principal del diálogo
-        dialog_content = ft.Container(
-            content=ft.Column(
-                [
-                    # Área de conversación
-                    ft.Container(
-                        content=conversation_area,
-                        height=300,
-                        bgcolor=self.theme.primary_bg,
-                        border_radius=12,
-                        padding=ft.padding.all(12)
-                    ),
-
-                    ft.Container(height=16),
-
-                    # Campo de respuesta del usuario
-                    user_response_field,
-
-                    ft.Container(height=16),
-
-                    # Botones de acción
-                    ft.Row(
-                        [
-                            ft.ElevatedButton(
-                                "💬 Enviar",
-                                on_click=send_user_response,
-                                style=ft.ButtonStyle(
-                                    bgcolor=self.theme.accent_primary,
-                                    color="#FFFFFF"
-                                )
-                            ),
-                            ft.TextButton(
-                                "✅ Terminar chat",
-                                on_click=lambda e: self.close_dialog()
-                            )
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                    )
-                ]
-            ),
-            width=500,
-            bgcolor=self.theme.surface,
-            padding=ft.padding.all(20),
-            border_radius=16
-        )
-
-        # Crear diálogo principal
-        chat_dialog = ft.AlertDialog(
-            title=ft.Text(
-                "🧠💚 Chat con IA - Especialista en Salud Mental",
-                size=18,
-                weight=ft.FontWeight.W_500,
-                color=self.theme.text_primary
-            ),
-            content=dialog_content,
-            bgcolor=self.theme.surface,
-            modal=False  # Permitir interacción con el fondo
-        )
-
-        self.page.dialog = chat_dialog
-        chat_dialog.open = True
-        self.page.update()
-
-    def show_daily_summary_dialog(self, summary):
-        """Mostrar resumen diario de IA con tema"""
-        dialog_content = ft.Container(
-            content=ft.Column(
-                [
-                    ft.Text(
-                        summary,
-                        size=14,
-                        color=self.theme.text_secondary,
-                        selectable=True
-                    )
-                ],
-                scroll=ft.ScrollMode.AUTO
-            ),
-            width=350,
-            height=300,
-            bgcolor=self.theme.surface,
-            padding=ft.padding.all(16),
-            border_radius=12,
-            border=ft.border.all(1, self.theme.border_color)
-        )
-
-        dialog = ft.AlertDialog(
-            title=ft.Text(
-                "🤖 Resumen de tu día",
-                size=18,
-                weight=ft.FontWeight.W_500,
-                color=self.theme.text_primary
-            ),
-            content=dialog_content,
-            actions=[
-                ft.TextButton(
-                    "Continuar chat",
-                    on_click=lambda e: self.continue_chat(),
-                    style=ft.ButtonStyle(color=self.theme.accent_primary)
-                ),
-                ft.TextButton(
-                    "Gracias",
-                    on_click=lambda e: self.close_dialog(),
-                    style=ft.ButtonStyle(color=self.theme.text_secondary)
-                )
-            ],
-            bgcolor=self.theme.surface
-        )
-
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
-
-    def continue_chat(self):
-        self.close_dialog()
-        self.show_success("Chat extendido próximamente")
-
-    def close_dialog(self):
-        if self.page and self.page.dialog:
-            self.page.dialog.open = False
-            self.page.update()
+        if total_content == 0:
+            print("⚠️ NO hay contenido para chat")
+            return False
+        elif total_content < 2 and len(reflection_text) < 10:
+            print("⚠️ Contenido insuficiente para chat significativo")
+            return False
+        else:
+            print("✅ Contenido suficiente para chat")
+            return True
 
     def go_to_calendar(self, e):
         self.page = e.page
