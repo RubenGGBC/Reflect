@@ -699,20 +699,304 @@ class DatabaseService:
             return 0
 
 
-    # En tu database_service.py - NUEVA TABLA
-def create_memory_table(self):
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_memories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            tipo TEXT NOT NULL,
-            contenido TEXT NOT NULL,  -- JSON
-            contexto_original TEXT,
-            importancia REAL,
-            frecuencia INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    """)
+
+
+    # Añadir estos métodos a tu database_service.py existente
+
+def create_interactive_moments_table(self):
+    """Crear tabla para momentos interactivos - NUEVO MÉTODO"""
+    try:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            # Tabla de momentos interactivos
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS interactive_moments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    moment_id TEXT NOT NULL,
+                    emoji TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    moment_type TEXT NOT NULL CHECK (moment_type IN ('positive', 'negative')),
+                    intensity INTEGER NOT NULL CHECK (intensity >= 1 AND intensity <= 10),
+                    category TEXT NOT NULL,
+                    time_str TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    entry_date DATE DEFAULT CURRENT_DATE,
+                    timestamp_data TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+
+            # Índices para mejor rendimiento
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_interactive_moments_user_date 
+                ON interactive_moments(user_id, entry_date)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_interactive_moments_user_type 
+                ON interactive_moments(user_id, moment_type)
+            """)
+
+            conn.commit()
+            print("✅ Tabla interactive_moments creada correctamente")
+
+    except Exception as e:
+        print(f"❌ Error creando tabla interactive_moments: {e}")
+
+def save_interactive_moment(self, user_id: int, moment_data: dict) -> Optional[int]:
+    """
+    Guardar momento interactivo individual
+
+    Args:
+        user_id: ID del usuario
+        moment_data: Diccionario con datos del momento
+
+    Returns:
+        ID del momento guardado o None si hay error
+    """
+    try:
+        today = date.today().isoformat()
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO interactive_moments (
+                    user_id, moment_id, emoji, text, moment_type, 
+                    intensity, category, time_str, entry_date, timestamp_data
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                moment_data.get('id', 0),
+                moment_data.get('emoji', ''),
+                moment_data.get('text', ''),
+                moment_data.get('type', 'positive'),
+                moment_data.get('intensity', 5),
+                moment_data.get('category', 'general'),
+                moment_data.get('time', '00:00'),
+                today,
+                moment_data.get('timestamp', '')
+            ))
+
+            moment_id = cursor.lastrowid
+            print(f"💾 Momento interactivo guardado: {moment_data.get('emoji')} {moment_data.get('text')} (ID: {moment_id})")
+            return moment_id
+
+    except Exception as e:
+        print(f"❌ Error guardando momento interactivo: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def get_interactive_moments_today(self, user_id: int) -> List[Dict[str, Any]]:
+    """
+    Obtener momentos interactivos del día actual
+
+    Args:
+        user_id: ID del usuario
+
+    Returns:
+        Lista de diccionarios con momentos del día
+    """
+    try:
+        today = date.today().isoformat()
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT moment_id, emoji, text, moment_type, intensity, 
+                       category, time_str, timestamp_data, created_at
+                FROM interactive_moments 
+                WHERE user_id = ? AND entry_date = ?
+                ORDER BY time_str, created_at
+            """, (user_id, today))
+
+            results = cursor.fetchall()
+
+            moments = []
+            for row in results:
+                moment_dict = {
+                    'id': row[0],
+                    'emoji': row[1],
+                    'text': row[2],
+                    'type': row[3],
+                    'intensity': row[4],
+                    'category': row[5],
+                    'time': row[6],
+                    'timestamp': row[7] or '',
+                    'created_at': row[8]
+                }
+                moments.append(moment_dict)
+
+            print(f"📚 Cargados {len(moments)} momentos interactivos de hoy")
+            return moments
+
+    except Exception as e:
+        print(f"❌ Error obteniendo momentos interactivos: {e}")
+        return []
+
+def clear_interactive_moments_today(self, user_id: int) -> bool:
+    """
+    Eliminar todos los momentos interactivos del día
+
+    Args:
+        user_id: ID del usuario
+
+    Returns:
+        True si se eliminaron correctamente, False si hay error
+    """
+    try:
+        today = date.today().isoformat()
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                DELETE FROM interactive_moments 
+                WHERE user_id = ? AND entry_date = ?
+            """, (user_id, today))
+
+            deleted_count = cursor.rowcount
+            print(f"🗑️ Eliminados {deleted_count} momentos interactivos de hoy")
+            return True
+
+    except Exception as e:
+        print(f"❌ Error eliminando momentos interactivos: {e}")
+        return False
+
+def get_interactive_moments_history(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
+    """
+    Obtener historial de momentos interactivos
+
+    Args:
+        user_id: ID del usuario
+        days: Número de días hacia atrás
+
+    Returns:
+        Lista de momentos con estadísticas por día
+    """
+    try:
+        start_date = (date.today() - timedelta(days=days)).isoformat()
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT entry_date, moment_type, COUNT(*) as count,
+                       AVG(intensity) as avg_intensity
+                FROM interactive_moments 
+                WHERE user_id = ? AND entry_date >= ?
+                GROUP BY entry_date, moment_type
+                ORDER BY entry_date DESC
+            """, (user_id, start_date))
+
+            results = cursor.fetchall()
+
+            history = []
+            for row in results:
+                history.append({
+                    'date': row[0],
+                    'type': row[1],
+                    'count': row[2],
+                    'avg_intensity': round(row[3], 1)
+                })
+
+            print(f"📊 Historial de {len(history)} registros cargado")
+            return history
+
+    except Exception as e:
+        print(f"❌ Error obteniendo historial: {e}")
+        return []
+
+def get_interactive_moments_stats(self, user_id: int) -> Dict[str, Any]:
+    """
+    Obtener estadísticas generales de momentos interactivos
+
+    Returns:
+        Diccionario con estadísticas
+    """
+    try:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            # Total de momentos
+            cursor.execute("""
+                SELECT COUNT(*) FROM interactive_moments WHERE user_id = ?
+            """, (user_id,))
+            total_moments = cursor.fetchone()[0]
+
+            # Momentos por tipo
+            cursor.execute("""
+                SELECT moment_type, COUNT(*) 
+                FROM interactive_moments 
+                WHERE user_id = ?
+                GROUP BY moment_type
+            """, (user_id,))
+
+            type_counts = dict(cursor.fetchall())
+
+            # Intensidad promedio
+            cursor.execute("""
+                SELECT AVG(intensity) 
+                FROM interactive_moments 
+                WHERE user_id = ?
+            """, (user_id,))
+
+            avg_intensity = cursor.fetchone()[0] or 0
+
+            # Categoría más usada
+            cursor.execute("""
+                SELECT category, COUNT(*) as count
+                FROM interactive_moments 
+                WHERE user_id = ?
+                GROUP BY category
+                ORDER BY count DESC
+                LIMIT 1
+            """, (user_id,))
+
+            top_category_result = cursor.fetchone()
+            top_category = top_category_result[0] if top_category_result else "ninguna"
+
+            stats = {
+                'total_moments': total_moments,
+                'positive_moments': type_counts.get('positive', 0),
+                'negative_moments': type_counts.get('negative', 0),
+                'avg_intensity': round(avg_intensity, 1),
+                'top_category': top_category,
+                'days_active': self._get_active_days_count(user_id)
+            }
+
+            print(f"📊 Estadísticas: {stats}")
+            return stats
+
+    except Exception as e:
+        print(f"❌ Error obteniendo estadísticas: {e}")
+        return {
+            'total_moments': 0,
+            'positive_moments': 0,
+            'negative_moments': 0,
+            'avg_intensity': 0.0,
+            'top_category': 'ninguna',
+            'days_active': 0
+        }
+
+def _get_active_days_count(self, user_id: int) -> int:
+    """Contar días únicos con actividad"""
+    try:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT entry_date) 
+                FROM interactive_moments 
+                WHERE user_id = ?
+            """, (user_id,))
+
+            return cursor.fetchone()[0] or 0
+
+    except Exception as e:
+        print(f"❌ Error contando días activos: {e}")
+        return 0
