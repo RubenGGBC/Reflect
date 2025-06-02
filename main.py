@@ -10,7 +10,7 @@ from screens.register_screen import RegisterScreen
 from screens.InteractiveMoments_screen import InteractiveMomentsScreen
 from screens.new_tag_screen import NewTagScreen
 from screens.calendar_screen import CalendarScreen
-from screens.day_details_screen import DayDetailsScreen
+from screens.day_details_screen import DailyReviewScreen
 from screens.theme_selector_screen import ThemeSelectorScreen
 from services.reflect_themes_system import (
     ThemeManager, ThemeType, get_theme, apply_theme_to_page,
@@ -104,6 +104,10 @@ class ReflectApp:
             elif page.route == "/ai_chat":
                 print("🧠 Navegando a AI_CHAT")
                 self.handle_ai_chat_route(page)
+
+            elif page.route == "/daily_review":
+                print("📝 Navegando a DAILY_REVIEW")
+                self.handle_daily_review_route(page)
 
             page.update()
             print(f"✅ Navegación a {page.route} completada")
@@ -307,24 +311,41 @@ class ReflectApp:
         page.views.append(view)
 
     def handle_day_details_route(self, page):
-        """Manejar ruta de detalles del día (mantener igual)"""
-        if self.current_day_details:
-            details = self.current_day_details
+        """Manejar ruta de detalles del día - CORREGIDO"""
+        print("📊 === HANDLE DAY DETAILS ROUTE ===")
 
-            def on_go_back():
-                page.go("/calendar")
+        # Redirigir a la pantalla de revisión diaria moderna
+        page.go("/daily_review")
 
-            self.day_details_screen = DayDetailsScreen(
-                year=details["year"],
-                month=details["month"],
-                day=details["day"],
-                day_details=details["details"],
-                on_go_back=on_go_back
-            )
+    def handle_daily_review_route(self, page):
+        """Manejar ruta de la revisión diaria - NUEVO"""
+        print("📝 === HANDLE DAILY REVIEW ROUTE ===")
 
-            view = self.day_details_screen.build()
-            self.apply_theme_to_view(view)
-            page.views.append(view)
+        if not self.current_user:
+            print("❌ No hay usuario - redirigiendo a login")
+            page.go("/login")
+            return
+
+        def on_go_back():
+            """Callback para volver"""
+            page.go("/calendar")
+
+        # Crear DailyReviewScreen con los parámetros correctos
+        self.day_details_screen = DailyReviewScreen(
+            app=self,
+            user_data=self.current_user,
+            on_go_back=on_go_back
+        )
+
+        # Establecer página
+        self.day_details_screen.page = page
+
+        # Construir vista
+        view = self.day_details_screen.build()
+        self.apply_theme_to_view(view)
+        page.views.append(view)
+
+        print("✅ DailyReviewScreen creada")
 
     def handle_theme_selector_route(self, page):
         """Manejar ruta del selector de temas (mantener igual)"""

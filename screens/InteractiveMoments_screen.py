@@ -1,6 +1,6 @@
 """
-🎮 Interactive Moments Screen - TODOS LOS 4 MODOS COMPLETOS
-✅ Quick Add - ✅ Mood Bubbles - ✅ Timeline - ✅ Templates
+🎮 Interactive Moments Screen - CORREGIDO PARA MÓVIL
+✅ Persistencia corregida ✅ Diseño móvil optimizado ✅ Header compacto
 """
 
 import flet as ft
@@ -14,7 +14,7 @@ from services.reflect_themes_system import (
 
 # ✅ SimpleTag definido localmente para evitar import circular
 class SimpleTag:
-    """Clase simple para representar un tag - DEFINIDA LOCALMENTE"""
+    """Clase simple para representar un tag"""
     def __init__(self, emoji, category, name, reason):
         self.emoji = emoji
         self.category = category  # "positive" o "negative"
@@ -36,7 +36,7 @@ class InteractiveMoment:
         self.timestamp = datetime.now()
 
     def to_simple_tag(self):
-        """Convertir a SimpleTag para compatibilidad con EntryScreen"""
+        """Convertir a SimpleTag para compatibilidad"""
         return SimpleTag(
             emoji=self.emoji,
             category=self.type,
@@ -76,11 +76,8 @@ class InteractiveMoment:
                 moment.timestamp = datetime.now()
         return moment
 
-    def __str__(self):
-        return f"{self.emoji} {self.text} ({self.type}) - {self.intensity}/10"
-
 class InteractiveMomentsScreen:
-    """Pantalla Interactive Moments - TODOS LOS 4 MODOS COMPLETOS"""
+    """Pantalla Interactive Moments - OPTIMIZADA PARA MÓVIL"""
 
     def __init__(self, app=None, on_moments_created: Callable = None, on_go_back: Callable = None):
         self.app = app
@@ -107,11 +104,11 @@ class InteractiveMomentsScreen:
         self.main_container = None
         self.summary_container = None
 
-        # Estado de persistencia
+        # Estado de persistencia CORREGIDO
         self.data_loaded = False
         self.auto_save_enabled = True
 
-        print("🎮 InteractiveMomentsScreen CON TODOS LOS MODOS inicializada")
+        print("🎮 InteractiveMomentsScreen OPTIMIZADA PARA MÓVIL inicializada")
 
     def set_user(self, user_data):
         """Establecer usuario actual"""
@@ -121,7 +118,7 @@ class InteractiveMomentsScreen:
         self.load_user_moments()
 
     def load_user_moments(self):
-        """Cargar momentos guardados del usuario desde la base de datos"""
+        """✅ CORREGIDO: Cargar momentos guardados del usuario desde la base de datos"""
         if not self.current_user:
             print("⚠️ No hay usuario para cargar momentos")
             return
@@ -132,13 +129,8 @@ class InteractiveMomentsScreen:
 
             print(f"📚 Cargando momentos interactivos para usuario {user_id}")
 
-            if hasattr(db, 'get_interactive_moments_today'):
-                moments_data = db.get_interactive_moments_today(user_id)
-            else:
-                print("⚠️ Método get_interactive_moments_today no disponible")
-                if hasattr(db, '_initialize_database'):
-                    db._initialize_database()
-                moments_data = []
+            # ✅ Usar método corregido de la clase
+            moments_data = db.get_interactive_moments_today(user_id)
 
             self.moments.clear()
             for moment_dict in moments_data:
@@ -161,7 +153,7 @@ class InteractiveMomentsScreen:
             traceback.print_exc()
 
     def save_moment_to_db(self, moment):
-        """Guardar momento individual en la base de datos"""
+        """✅ CORREGIDO: Guardar momento individual en la base de datos"""
         if not self.current_user:
             print("⚠️ No hay usuario para guardar momento")
             return False
@@ -170,21 +162,18 @@ class InteractiveMomentsScreen:
             from services import db
             user_id = self.current_user['id']
 
-            if hasattr(db, 'save_interactive_moment'):
-                moment_id = db.save_interactive_moment(
-                    user_id=user_id,
-                    moment_data=moment.to_dict()
-                )
+            # ✅ Usar método corregido de la clase
+            moment_id = db.save_interactive_moment(
+                user_id=user_id,
+                moment_data=moment.to_dict()
+            )
 
-                if moment_id:
-                    print(f"💾 Momento guardado en DB: {moment.emoji} {moment.text} (ID: {moment_id})")
-                    return True
-                else:
-                    print("❌ Error guardando momento en DB")
-                    return False
+            if moment_id:
+                print(f"💾 Momento guardado en DB: {moment.emoji} {moment.text} (ID: {moment_id})")
+                return True
             else:
-                print("⚠️ Método save_interactive_moment no disponible")
-                return True  # Fingir éxito para desarrollo
+                print("❌ Error guardando momento en DB")
+                return False
 
         except Exception as e:
             print(f"❌ Error guardando momento: {e}")
@@ -200,50 +189,88 @@ class InteractiveMomentsScreen:
         return True
 
     def build(self):
-        """Construir vista principal"""
+        """✅ CORREGIDO: Construir vista principal optimizada para móvil"""
         self.theme = get_theme()
 
-        # Header
+        # ✅ Header COMPACTO para móvil
         back_button = ft.TextButton(
             "← Volver",
             on_click=self.go_back,
             style=ft.ButtonStyle(color="#FFFFFF")
         )
 
-        additional_buttons = ft.Row([
-            ft.TextButton("🎨", on_click=self.go_to_theme_selector,
-                          style=ft.ButtonStyle(color="#FFFFFF"), tooltip="Temas"),
-            ft.TextButton("📅", on_click=self.go_to_calendar,
-                          style=ft.ButtonStyle(color="#FFFFFF"), tooltip="Calendario"),
-            ft.TextButton("⚙️", on_click=self.show_settings_dialog,
-                          style=ft.ButtonStyle(color="#FFFFFF"), tooltip="Configuración")
-        ], spacing=0)
+        # ✅ Botones más pequeños y compactos
+        action_buttons = ft.Row([
+            ft.Container(
+                content=ft.Text("🎨", size=16),
+                on_click=self.go_to_theme_selector,
+                bgcolor="#FFFFFF20",
+                border_radius=8,
+                padding=ft.padding.all(8),
+                tooltip="Temas"
+            ),
+            ft.Container(
+                content=ft.Text("📅", size=16),
+                on_click=self.go_to_calendar,
+                bgcolor="#FFFFFF20",
+                border_radius=8,
+                padding=ft.padding.all(8),
+                tooltip="Calendario"
+            )
+        ], spacing=8)
 
         user_name = self.current_user.get('name', 'Viajero') if self.current_user else 'Viajero'
-        header = create_gradient_header(
-            title=f"🎮 Momentos - {user_name}",
-            left_button=back_button,
-            right_button=additional_buttons,
-            theme=self.theme
+
+        # ✅ Header más pequeño
+        header = ft.Container(
+            content=ft.Row([
+                back_button,
+                ft.Column([
+                    ft.Text(
+                        f"🎮 Momentos",
+                        size=16,  # ✅ Tamaño reducido
+                        weight=ft.FontWeight.W_600,
+                        color="#FFFFFF",
+                        text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        user_name,
+                        size=12,  # ✅ Subtítulo pequeño
+                        color="#FFFFFF80",
+                        text_align=ft.TextAlign.CENTER
+                    )
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2, expand=True),
+                action_buttons
+            ]),
+            padding=ft.padding.all(12),  # ✅ Padding reducido
+            gradient=ft.LinearGradient(
+                begin=ft.alignment.center_left,
+                end=ft.alignment.center_right,
+                colors=self.theme.gradient_header
+            ),
+            border_radius=ft.border_radius.only(bottom_left=16, bottom_right=16)  # ✅ Bordes más pequeños
         )
 
-        # Descripción con estadísticas
+        # ✅ Descripción compacta
         stats_text = ""
         if self.moments:
             positive_count = len([m for m in self.moments if m.type == "positive"])
             negative_count = len([m for m in self.moments if m.type == "negative"])
-            stats_text = f" • {positive_count}+ {negative_count}- momentos de hoy"
+            stats_text = f" • {positive_count}+ {negative_count}-"
 
         description = ft.Container(
             content=ft.Text(
-                f"Experimenta diferentes formas de capturar tus momentos{stats_text}",
-                size=14, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER
+                f"Captura tus momentos{stats_text}",
+                size=12,  # ✅ Texto más pequeño
+                color=self.theme.text_secondary,
+                text_align=ft.TextAlign.CENTER
             ),
-            padding=ft.padding.only(bottom=20), alignment=ft.alignment.center
+            padding=ft.padding.only(top=12, bottom=8),  # ✅ Espaciado reducido
+            alignment=ft.alignment.center
         )
 
-        # Selector de modos
-        mode_selector = self.build_mode_selector()
+        # ✅ Selector de modos compacto
+        mode_selector = self.build_mode_selector_compact()
 
         # Contenedor principal dinámico
         self.main_container = ft.Container(
@@ -256,55 +283,63 @@ class InteractiveMomentsScreen:
             content=self.build_moments_summary()
         )
 
-        # Vista completa
+        # ✅ Vista completa optimizada para móvil
         content = ft.Column([
             description,
             mode_selector,
-            ft.Container(height=20),
+            ft.Container(height=12),  # ✅ Espacios reducidos
             self.main_container,
-            ft.Container(height=20),
+            ft.Container(height=12),
             self.summary_container
         ], scroll=ft.ScrollMode.AUTO, spacing=0)
 
         view = ft.View(
             "/interactive_moments",
-            [header, ft.Container(content=content, padding=ft.padding.all(20), expand=True)],
+            [header, ft.Container(content=content, padding=ft.padding.all(12), expand=True)],  # ✅ Padding reducido
             bgcolor=self.theme.primary_bg, padding=0, spacing=0
         )
 
         return view
 
-    def build_mode_selector(self):
-        """Selector de modos"""
+    def build_mode_selector_compact(self):
+        """✅ Selector de modos compacto para móvil"""
         modes = [
-            {"id": "quick", "name": "Quick Add", "emoji": "⚡", "desc": "Añadir rápido con emojis"},
-            {"id": "mood", "name": "Mood Bubbles", "emoji": "🎭", "desc": "Burbujas de intensidad"},
-            {"id": "timeline", "name": "Timeline", "emoji": "⏰", "desc": "Línea de tiempo del día"},
-            {"id": "templates", "name": "Templates", "emoji": "🎯", "desc": "Situaciones comunes"}
+            {"id": "quick", "emoji": "⚡", "name": "Quick"},
+            {"id": "mood", "emoji": "🎭", "name": "Mood"},
+            {"id": "timeline", "emoji": "⏰", "name": "Timeline"},
+            {"id": "templates", "emoji": "🎯", "name": "Templates"}
         ]
 
-        mode_buttons = []
-        for i, mode in enumerate(modes):
-            if i % 2 == 0:
-                row = ft.Row(spacing=12, alignment=ft.MainAxisAlignment.CENTER)
-                mode_buttons.append(row)
+        # ✅ En filas de 2 para móvil
+        mode_rows = []
+        for i in range(0, len(modes), 2):
+            row_modes = []
+            for j in range(2):
+                if i + j < len(modes):
+                    mode = modes[i + j]
+                    is_active = self.active_mode == mode["id"]
 
-            is_active = self.active_mode == mode["id"]
-            button = ft.Container(
-                content=ft.Column([
-                    ft.Text(mode["emoji"], size=28),
-                    ft.Text(mode["name"], size=14, weight=ft.FontWeight.W_600, color=self.theme.text_primary),
-                    ft.Text(mode["desc"], size=12, color=self.theme.text_secondary)
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
-                width=160, height=100, padding=ft.padding.all(16), border_radius=16,
-                bgcolor=self.theme.accent_primary + "20" if is_active else self.theme.surface,
-                border=ft.border.all(2 if is_active else 1,
-                                     self.theme.accent_primary if is_active else self.theme.border_color),
-                on_click=lambda e, mode_id=mode["id"]: self.switch_mode(mode_id)
-            )
-            mode_buttons[-1].controls.append(button)
+                    button = ft.Container(
+                        content=ft.Column([
+                            ft.Text(mode["emoji"], size=20),
+                            ft.Text(mode["name"], size=12, weight=ft.FontWeight.W_600,
+                                    color=self.theme.text_primary)
+                        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+                        width=140,  # ✅ Ancho fijo para móvil
+                        height=70,  # ✅ Altura reducida
+                        padding=ft.padding.all(12),
+                        border_radius=12,
+                        bgcolor=self.theme.accent_primary + "30" if is_active else self.theme.surface,
+                        border=ft.border.all(2 if is_active else 1,
+                                             self.theme.accent_primary if is_active else self.theme.border_color),
+                        on_click=lambda e, mode_id=mode["id"]: self.switch_mode(mode_id)
+                    )
+                    row_modes.append(button)
 
-        return ft.Column(mode_buttons, spacing=12)
+            if row_modes:
+                mode_rows.append(ft.Row(row_modes, spacing=8, alignment=ft.MainAxisAlignment.CENTER))
+
+        return ft.Column(mode_rows, spacing=8)
 
     def switch_mode(self, mode_id: str):
         """Cambiar entre modos"""
@@ -330,133 +365,121 @@ class InteractiveMomentsScreen:
         return ft.Container()
 
     # ===============================
-    # MODO 1: QUICK ADD COMPLETO
+    # MODO 1: QUICK ADD - OPTIMIZADO MÓVIL
     # ===============================
     def build_quick_add_mode(self):
-        """Modo Quick Add - IMPLEMENTACIÓN COMPLETA"""
+        """✅ OPTIMIZADO: Modo Quick Add para móvil"""
 
-        # Campo de texto principal
+        # ✅ Campo de texto más compacto
         self.quick_text_field = ft.TextField(
-            hint_text="¿Qué pasó? (ej: 'Desayuno delicioso', 'Reunión eterna')",
-            border_radius=16, bgcolor=self.theme.surface, border_color=self.theme.border_color,
-            focused_border_color=self.theme.accent_primary, content_padding=ft.padding.all(16),
-            text_style=ft.TextStyle(color=self.theme.text_primary)
+            hint_text="¿Qué pasó?",
+            border_radius=12,
+            bgcolor=self.theme.surface,
+            border_color=self.theme.border_color,
+            focused_border_color=self.theme.accent_primary,
+            content_padding=ft.padding.all(12),  # ✅ Padding reducido
+            text_style=ft.TextStyle(color=self.theme.text_primary),
+            height=50  # ✅ Altura fija más pequeña
         )
 
-        # Frases rápidas organizadas en filas
+        # ✅ Frases rápidas más compactas
         quick_phrases = [
-            "Me sentí increíble", "Fue genial", "Perfecto momento", "Me encantó",
-            "Muy estresante", "Me frustré", "Fue difícil", "Me agotó"
+            "Me sentí increíble", "Fue genial", "Muy estresante", "Me frustré"
         ]
 
-        phrase_rows = []
+        phrase_buttons = []
         for i in range(0, len(quick_phrases), 2):
             row_phrases = []
             for j in range(2):
                 if i + j < len(quick_phrases):
                     phrase = quick_phrases[i + j]
                     btn = ft.Container(
-                        content=ft.Text(phrase, size=12, color=self.theme.text_secondary),
-                        padding=ft.padding.symmetric(horizontal=12, vertical=6), border_radius=20,
-                        bgcolor=self.theme.surface, border=ft.border.all(1, self.theme.border_color),
+                        content=ft.Text(phrase, size=11, color=self.theme.text_secondary,
+                                        text_align=ft.TextAlign.CENTER),
+                        padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                        border_radius=16,
+                        bgcolor=self.theme.surface,
+                        border=ft.border.all(1, self.theme.border_color),
                         on_click=lambda e, p=phrase: self.set_quick_text(p),
                         expand=True
                     )
                     row_phrases.append(btn)
 
             if row_phrases:
-                phrase_rows.append(ft.Row(row_phrases, spacing=8))
+                phrase_buttons.append(ft.Row(row_phrases, spacing=6))
 
-        phrases_container = ft.Column(phrase_rows, spacing=8)
-
-        # Categorías de emojis organizadas
-        emoji_categories = {
-            "positive": {
-                "simple": ['😊', '😍', '🥰', '😌', '😎', '🤗'],
-                "achievement": ['🎉', '🏆', '⭐', '💪', '🚀', '✨'],
-                "activities": ['☕', '🍕', '📚', '🎵', '🎨', '🏃‍♂️']
-            },
-            "negative": {
-                "stress": ['😰', '😫', '🤯', '😤', '😮‍💨', '🥴'],
-                "sadness": ['😢', '😔', '💔', '😞', '😿', '⛈️'],
-                "work": ['💼', '📊', '⏰', '🔥', '📉', '💻']
-            }
-        }
-
-        # Construir secciones de emojis
+        # ✅ Emojis organizados compactos
         emoji_sections = []
 
-        # Sección positiva
-        positive_section = self.build_emoji_category_section(
-            "✨ Momentos Positivos", emoji_categories["positive"], "positive",
-            self.theme.positive_main, self.theme.positive_light
+        # Sección positiva compacta
+        positive_emojis = ['😊', '🎉', '💪', '☕', '🎵', '🤗']
+        positive_section = self.build_compact_emoji_section(
+            "✨ Positivos", positive_emojis, "positive", self.theme.positive_main
         )
         emoji_sections.append(positive_section)
-        emoji_sections.append(ft.Container(height=16))
 
-        # Sección negativa
-        negative_section = self.build_emoji_category_section(
-            "🌧️ Momentos Difíciles", emoji_categories["negative"], "negative",
-            self.theme.negative_main, self.theme.negative_light
+        # Sección negativa compacta
+        negative_emojis = ['😰', '😔', '😤', '💼', '😫', '🤯']
+        negative_section = self.build_compact_emoji_section(
+            "🌧️ Difíciles", negative_emojis, "negative", self.theme.negative_main
         )
         emoji_sections.append(negative_section)
 
         return ft.Column([
-            ft.Text("⚡ Quick Add", size=20, weight=ft.FontWeight.BOLD, color=self.theme.text_primary),
-            ft.Container(height=16),
+            # ✅ Campo de texto
             create_themed_container(content=self.quick_text_field, theme=self.theme),
-            ft.Container(height=16),
+
+            ft.Container(height=8),
+
+            # ✅ Frases rápidas
             create_themed_container(
                 content=ft.Column([
-                    ft.Text("⚡ Frases rápidas:", size=14, weight=ft.FontWeight.W_500, color=self.theme.text_secondary),
-                    ft.Container(height=8),
-                    phrases_container
-                ]), theme=self.theme
+                    ft.Text("⚡ Frases:", size=12, weight=ft.FontWeight.W_500,
+                            color=self.theme.text_secondary),
+                    ft.Container(height=6),
+                    ft.Column(phrase_buttons, spacing=6)
+                ]),
+                theme=self.theme
             ),
-            ft.Container(height=16),
-            ft.Column(emoji_sections)
+
+            ft.Container(height=8),
+
+            # ✅ Emojis compactos
+            ft.Column(emoji_sections, spacing=8)
         ])
 
-    def build_emoji_category_section(self, title: str, categories: Dict, moment_type: str,
-                                     main_color: str, light_color: str):
-        """Construir sección de categoría de emojis"""
-        category_columns = []
+    def build_compact_emoji_section(self, title: str, emojis: List[str], moment_type: str, color: str):
+        """✅ Sección de emojis compacta para móvil"""
 
-        for category_name, emojis in categories.items():
-            category_title = ft.Text(category_name.title(), size=12, color=self.theme.text_hint,
-                                     weight=ft.FontWeight.W_500)
+        # ✅ Grid de emojis en filas de 6
+        emoji_rows = []
+        for i in range(0, len(emojis), 6):
+            row_emojis = []
+            for j in range(6):
+                if i + j < len(emojis):
+                    emoji = emojis[i + j]
+                    btn = ft.Container(
+                        content=ft.Text(emoji, size=20),
+                        width=40,  # ✅ Tamaño reducido
+                        height=40,
+                        border_radius=8,
+                        bgcolor=self.theme.surface,
+                        border=ft.border.all(1, self.theme.border_color),
+                        alignment=ft.alignment.center,
+                        on_click=lambda e, em=emoji: self.add_quick_moment_safe(em, moment_type, "quick")
+                    )
+                    row_emojis.append(btn)
 
-            # Botones de emojis en filas de 3
-            emoji_rows = []
-            for i in range(0, len(emojis), 3):
-                row_emojis = []
-                for j in range(3):
-                    if i + j < len(emojis):
-                        emoji = emojis[i + j]
-                        btn = ft.Container(
-                            content=ft.Text(emoji, size=24), width=50, height=50, border_radius=12,
-                            bgcolor=self.theme.surface, border=ft.border.all(1, self.theme.border_color),
-                            alignment=ft.alignment.center,
-                            on_click=lambda e, em=emoji, cat=category_name: self.add_quick_moment_safe(em, moment_type, cat)
-                        )
-                        row_emojis.append(btn)
-                    else:
-                        row_emojis.append(ft.Container(width=50, height=50))
-
-                emoji_rows.append(ft.Row(row_emojis, spacing=8, alignment=ft.MainAxisAlignment.CENTER))
-
-            emoji_grid = ft.Column(emoji_rows, spacing=8)
-
-            category_columns.append(ft.Column([
-                category_title, ft.Container(height=8), emoji_grid
-            ], spacing=0))
+            if row_emojis:
+                emoji_rows.append(ft.Row(row_emojis, spacing=6, alignment=ft.MainAxisAlignment.CENTER))
 
         content = ft.Column([
-                                ft.Text(title, size=16, weight=ft.FontWeight.W_600, color=main_color),
-                                ft.Container(height=12)
-                            ] + category_columns, spacing=12)
+            ft.Text(title, size=14, weight=ft.FontWeight.W_600, color=color),
+            ft.Container(height=8),
+            ft.Column(emoji_rows, spacing=6)
+        ])
 
-        return create_themed_container(content=content, theme=self.theme, border_radius=16)
+        return create_themed_container(content=content, theme=self.theme)
 
     def set_quick_text(self, text: str):
         """Establecer texto rápido"""
@@ -491,60 +514,55 @@ class InteractiveMomentsScreen:
         else:
             self.show_message("❌ Error guardando momento", is_error=True)
 
-    # ===================================
-    # MODO 2: MOOD BUBBLES COMPLETO
-    # ===================================
+    # ===============================
+    # MOOD BUBBLES - OPTIMIZADO MÓVIL
+    # ===============================
     def build_mood_bubbles_mode(self):
-        """Modo Mood Bubbles - IMPLEMENTACIÓN COMPLETA"""
+        """✅ OPTIMIZADO: Modo Mood Bubbles para móvil"""
 
-        # Slider de intensidad
-        intensity_section = self.build_intensity_slider()
+        # ✅ Slider de intensidad compacto
+        intensity_section = self.build_compact_intensity_slider()
 
-        # Burbujas de emociones
+        # ✅ Burbujas compactas
         bubble_options = [
             {'emoji': '😊', 'text': 'Alegre', 'type': 'positive'},
             {'emoji': '🎉', 'text': 'Emocionado', 'type': 'positive'},
             {'emoji': '😌', 'text': 'Tranquilo', 'type': 'positive'},
             {'emoji': '💪', 'text': 'Motivado', 'type': 'positive'},
             {'emoji': '😰', 'text': 'Estresado', 'type': 'negative'},
-            {'emoji': '😔', 'text': 'Triste', 'type': 'negative'},
-            {'emoji': '😤', 'text': 'Frustrado', 'type': 'negative'},
-            {'emoji': '😫', 'text': 'Agotado', 'type': 'negative'}
+            {'emoji': '😔', 'text': 'Triste', 'type': 'negative'}
         ]
 
-        # Crear grid de burbujas en filas de 2
+        # ✅ Grid de burbujas en filas de 2
         bubble_rows = []
         for i in range(0, len(bubble_options), 2):
             row_bubbles = []
             for j in range(2):
                 if i + j < len(bubble_options):
                     bubble = bubble_options[i + j]
-                    bubble_widget = self.create_mood_bubble(bubble)
+                    bubble_widget = self.create_compact_mood_bubble(bubble)
                     row_bubbles.append(bubble_widget)
 
             if row_bubbles:
-                bubble_rows.append(ft.Row(row_bubbles, alignment=ft.MainAxisAlignment.SPACE_AROUND, spacing=16))
+                bubble_rows.append(ft.Row(row_bubbles, alignment=ft.MainAxisAlignment.SPACE_AROUND, spacing=12))
 
         bubbles_container = create_themed_container(
             content=ft.Column([
-                                  ft.Text("🫧 Toca una burbuja de emoción", size=16, weight=ft.FontWeight.W_600,
+                                  ft.Text("🫧 Toca una emoción", size=14, weight=ft.FontWeight.W_600,
                                           color=self.theme.text_primary, text_align=ft.TextAlign.CENTER),
-                                  ft.Container(height=16)
-                              ] + bubble_rows, spacing=16),
+                                  ft.Container(height=12)
+                              ] + bubble_rows, spacing=12),
             theme=self.theme
         )
 
         return ft.Column([
-            ft.Text("🎭 Mood Bubbles", size=20, weight=ft.FontWeight.BOLD, color=self.theme.text_primary),
-            ft.Container(height=16),
             intensity_section,
-            ft.Container(height=20),
+            ft.Container(height=12),
             bubbles_container
         ])
 
-    def build_intensity_slider(self):
-        """Slider de intensidad visual"""
-        # Slider principal
+    def build_compact_intensity_slider(self):
+        """✅ Slider de intensidad compacto"""
         self.intensity_slider = ft.Slider(
             min=1, max=10, value=self.current_intensity, divisions=9,
             on_change=self.on_intensity_change,
@@ -554,58 +572,44 @@ class InteractiveMomentsScreen:
 
         return create_themed_container(
             content=ft.Column([
-                ft.Text("🎚️ Intensidad del momento", size=16, weight=ft.FontWeight.W_600,
+                ft.Text("🎚️ Intensidad", size=14, weight=ft.FontWeight.W_600,
                         color=self.theme.text_primary, text_align=ft.TextAlign.CENTER),
-                ft.Container(height=12),
-
-                # Emojis de referencia
-                ft.Row([ft.Text("😐", size=24), ft.Container(expand=True), ft.Text("🤯", size=24)]),
                 ft.Container(height=8),
 
-                # Slider
-                self.intensity_slider,
-                ft.Container(height=12),
+                # ✅ Slider compacto
+                ft.Row([
+                    ft.Text("😐", size=20),
+                    ft.Container(content=self.intensity_slider, expand=True),
+                    ft.Text("🤯", size=20)
+                ]),
 
-                # Valor actual
-                ft.Column([
-                    ft.Text(f"{int(self.current_intensity)}/10", size=24, weight=ft.FontWeight.BOLD,
-                            color=self.get_intensity_color(self.current_intensity), text_align=ft.TextAlign.CENTER),
-                    ft.Text(self.get_intensity_label(self.current_intensity), size=14,
-                            color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER)
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+                ft.Container(height=8),
+
+                # ✅ Valor compacto
+                ft.Text(f"{int(self.current_intensity)}/10", size=18, weight=ft.FontWeight.BOLD,
+                        color=self.get_intensity_color(self.current_intensity), text_align=ft.TextAlign.CENTER)
             ]), theme=self.theme
         )
 
-    def create_mood_bubble(self, bubble_data):
-        """Crear burbuja de emoción individual"""
+    def create_compact_mood_bubble(self, bubble_data):
+        """✅ Burbuja de emoción compacta"""
         is_positive = bubble_data["type"] == "positive"
         base_color = self.theme.positive_main if is_positive else self.theme.negative_main
         light_color = self.theme.positive_light if is_positive else self.theme.negative_light
 
-        # Indicadores de intensidad (puntos)
-        intensity_level = max(1, int(self.current_intensity // 2))  # 1-5 dots
-        intensity_dots = []
-        for i in range(5):
-            opacity = 1.0 if i < intensity_level else 0.3
-            size = 6 if i < intensity_level else 4
-            dot = ft.Container(width=size, height=size, border_radius=size // 2,
-                               bgcolor=base_color, opacity=opacity)
-            intensity_dots.append(dot)
-
-        dots_row = ft.Row(intensity_dots, spacing=3, alignment=ft.MainAxisAlignment.CENTER)
-
-        # Burbuja principal
         bubble = ft.Container(
             content=ft.Column([
-                ft.Text(bubble_data["emoji"], size=36),
-                ft.Container(height=8),
-                ft.Text(bubble_data["text"], size=14, weight=ft.FontWeight.W_500,
+                ft.Text(bubble_data["emoji"], size=28),
+                ft.Container(height=4),
+                ft.Text(bubble_data["text"], size=12, weight=ft.FontWeight.W_500,
                         color=self.theme.text_primary, text_align=ft.TextAlign.CENTER),
-                ft.Container(height=8),
-                dots_row
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0),
-            width=140, height=120, padding=ft.padding.all(16), border_radius=20,
-            bgcolor=light_color, border=ft.border.all(2, base_color + "50"),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            width=120,  # ✅ Tamaño reducido
+            height=90,   # ✅ Altura reducida
+            padding=ft.padding.all(12),
+            border_radius=16,
+            bgcolor=light_color,
+            border=ft.border.all(2, base_color + "50"),
             on_click=lambda e, bubble=bubble_data: self.create_mood_moment(bubble)
         )
 
@@ -629,15 +633,6 @@ class InteractiveMomentsScreen:
         else:
             return self.theme.positive_main
 
-    def get_intensity_label(self, intensity):
-        """Etiqueta según intensidad"""
-        if intensity <= 3:
-            return "Suave"
-        elif intensity <= 7:
-            return "Moderado"
-        else:
-            return "Intenso"
-
     def create_mood_moment(self, bubble_data):
         """Crear momento desde burbuja"""
         moment = InteractiveMoment(
@@ -648,177 +643,104 @@ class InteractiveMomentsScreen:
 
         if self.auto_save_moment(moment):
             self.moments.append(moment)
-            self.show_message(f"✅ {bubble_data['emoji']} {bubble_data['text']} añadido con intensidad {int(self.current_intensity)}")
+            self.show_message(f"✅ {bubble_data['emoji']} {bubble_data['text']} añadido")
             self.refresh_summary()
         else:
             self.show_message("❌ Error guardando momento", is_error=True)
 
     # ===============================
-    # MODO 3: TIMELINE COMPLETO
+    # TIMELINE Y TEMPLATES - SIMPLIFICADOS
     # ===============================
     def build_timeline_mode(self):
-        """Modo Timeline - IMPLEMENTACIÓN COMPLETA"""
+        """✅ Timeline simplificado para móvil"""
+        # ✅ Selector de hora simplificado
+        current_hour = datetime.now().hour
+        hours_around = [max(0, current_hour-2), max(0, current_hour-1), current_hour,
+                        min(23, current_hour+1), min(23, current_hour+2)]
 
-        # Selector de horas visual
-        hour_selector = self.build_hour_selector()
+        hour_buttons = []
+        for hour in hours_around:
+            is_selected = hour == self.selected_hour
+            btn = ft.Container(
+                content=ft.Text(f"{hour:02d}:00", size=12, color=self.theme.text_primary),
+                width=60, height=35, border_radius=8,
+                bgcolor=self.theme.accent_primary + "30" if is_selected else self.theme.surface,
+                border=ft.border.all(1, self.theme.accent_primary if is_selected else self.theme.border_color),
+                alignment=ft.alignment.center,
+                on_click=lambda e, h=hour: self.select_hour(h)
+            )
+            hour_buttons.append(btn)
 
-        # Formulario para añadir momento
-        moment_form = self.build_timeline_moment_form()
+        # ✅ Formulario compacto
+        self.timeline_text_field = ft.TextField(
+            hint_text="¿Qué pasó en esta hora?",
+            border_radius=12, bgcolor=self.theme.surface,
+            content_padding=ft.padding.all(12), height=50
+        )
 
-        # Vista de timeline
-        timeline_visual = self.build_timeline_visual()
-
-        return ft.Column([
-            ft.Text("⏰ Timeline del Día", size=20, weight=ft.FontWeight.BOLD, color=self.theme.text_primary),
-            ft.Container(height=16),
-            hour_selector,
-            ft.Container(height=16),
-            moment_form,
-            ft.Container(height=16),
-            timeline_visual
+        buttons_row = ft.Row([
+            ft.ElevatedButton("✨ Positivo", on_click=lambda e: self.add_timeline_moment("positive"),
+                              style=ft.ButtonStyle(bgcolor=self.theme.positive_main, color="#FFFFFF"), expand=True),
+            ft.Container(width=8),
+            ft.ElevatedButton("🌧️ Difícil", on_click=lambda e: self.add_timeline_moment("negative"),
+                              style=ft.ButtonStyle(bgcolor=self.theme.negative_main, color="#FFFFFF"), expand=True)
         ])
 
-    def build_hour_selector(self):
-        """Selector visual de horas completo"""
-        current_hour = datetime.now().hour
-
-        # Crear botones de horas en filas de 6
-        hour_rows = []
-        for row_start in range(0, 24, 6):
-            hour_buttons = []
-
-            for hour in range(row_start, min(row_start + 6, 24)):
-                moment_at_hour = self.get_moment_for_hour(hour)
-                is_past = hour < current_hour
-                is_current = hour == current_hour
-                is_selected = hour == self.selected_hour
-
-                # Determinar estilo
-                if is_selected:
-                    bg_color = self.theme.accent_primary + "50"
-                    border_color = self.theme.accent_primary
-                    border_width = 2
-                elif moment_at_hour:
-                    color = self.theme.positive_main if moment_at_hour.type == "positive" else self.theme.negative_main
-                    bg_color = color + "30"
-                    border_color = color
-                    border_width = 2
-                else:
-                    bg_color = self.theme.surface
-                    border_color = self.theme.border_color
-                    border_width = 1
-
-                opacity = 0.5 if is_past and not moment_at_hour else 1.0
-
-                # Contenido del botón
-                if moment_at_hour:
-                    content = ft.Column([
-                        ft.Text(f"{hour:02d}:00", size=10, color=self.theme.text_secondary),
-                        ft.Text(moment_at_hour.emoji, size=16)
-                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2)
-                else:
-                    indicator_color = "#FFA500" if is_current else self.theme.border_color
-                    content = ft.Column([
-                        ft.Text(f"{hour:02d}:00", size=10, color=self.theme.text_secondary),
-                        ft.Container(width=8, height=8, border_radius=4, bgcolor=indicator_color)
-                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2)
-
-                button = ft.Container(
-                    content=content, width=50, height=40, border_radius=8,
-                    bgcolor=bg_color, border=ft.border.all(border_width, border_color),
-                    opacity=opacity, on_click=lambda e, h=hour: self.select_hour(h)
-                )
-                hour_buttons.append(button)
-
-            hour_rows.append(ft.Row(hour_buttons, spacing=8, alignment=ft.MainAxisAlignment.CENTER))
-
-        return create_themed_container(
-            content=ft.Column([
-                                  ft.Text("🕐 Selecciona la hora", size=16, weight=ft.FontWeight.W_600,
-                                          color=self.theme.text_primary, text_align=ft.TextAlign.CENTER),
-                                  ft.Container(height=12)
-                              ] + hour_rows, spacing=8), theme=self.theme
-        )
-
-    def build_timeline_moment_form(self):
-        """Formulario para añadir momento al timeline"""
-        self.timeline_text_field = ft.TextField(
-            hint_text="Describe qué pasó en esta hora...", border_radius=12,
-            bgcolor=self.theme.surface, border_color=self.theme.border_color,
-            focused_border_color=self.theme.accent_primary, content_padding=ft.padding.all(16),
-            text_style=ft.TextStyle(color=self.theme.text_primary)
-        )
-
-        positive_btn = ft.ElevatedButton(
-            content=ft.Row([ft.Text("✨", size=16), ft.Text("Positivo", size=14)],
-                           spacing=8, alignment=ft.MainAxisAlignment.CENTER),
-            on_click=lambda e: self.add_timeline_moment("positive"),
-            style=ft.ButtonStyle(bgcolor=self.theme.positive_main, color="#FFFFFF",
-                                 shape=ft.RoundedRectangleBorder(radius=12)),
-            height=45, expand=True
-        )
-
-        negative_btn = ft.ElevatedButton(
-            content=ft.Row([ft.Text("🌧️", size=16), ft.Text("Difícil", size=14)],
-                           spacing=8, alignment=ft.MainAxisAlignment.CENTER),
-            on_click=lambda e: self.add_timeline_moment("negative"),
-            style=ft.ButtonStyle(bgcolor=self.theme.negative_main, color="#FFFFFF",
-                                 shape=ft.RoundedRectangleBorder(radius=12)),
-            height=45, expand=True
-        )
-
-        return create_themed_container(
-            content=ft.Column([
-                ft.Text(f"📝 ¿Qué pasó a las {self.selected_hour:02d}:00?", size=16,
-                        weight=ft.FontWeight.W_600, color=self.theme.text_primary),
-                ft.Container(height=12),
-                self.timeline_text_field,
-                ft.Container(height=16),
-                ft.Row([positive_btn, ft.Container(width=12), negative_btn], expand=True)
-            ]), theme=self.theme
-        )
-
-    def build_timeline_visual(self):
-        """Vista visual del timeline"""
-        if not self.moments:
-            return create_themed_container(
-                content=ft.Text("No hay momentos en el timeline aún", color=self.theme.text_hint,
-                                text_align=ft.TextAlign.CENTER), theme=self.theme
+        return ft.Column([
+            create_themed_container(
+                content=ft.Column([
+                    ft.Text("⏰ Selecciona hora", size=14, weight=ft.FontWeight.W_600, color=self.theme.text_primary),
+                    ft.Container(height=8),
+                    ft.Row(hour_buttons, spacing=8, alignment=ft.MainAxisAlignment.CENTER)
+                ]), theme=self.theme
+            ),
+            ft.Container(height=12),
+            create_themed_container(
+                content=ft.Column([
+                    self.timeline_text_field,
+                    ft.Container(height=12),
+                    buttons_row
+                ]), theme=self.theme
             )
+        ])
 
-        # Ordenar momentos por hora
-        timeline_moments = sorted(self.moments, key=lambda m: m.time)
+    def build_templates_mode(self):
+        """✅ Templates simplificados para móvil"""
+        templates = [
+            {"emoji": "💪", "text": "Ejercicio energizante", "type": "positive"},
+            {"emoji": "☕", "text": "Café con amigo", "type": "positive"},
+            {"emoji": "🎯", "text": "Tarea completada", "type": "positive"},
+            {"emoji": "😰", "text": "Estrés laboral", "type": "negative"},
+            {"emoji": "😴", "text": "Mala noche", "type": "negative"},
+            {"emoji": "🤐", "text": "Conflicto personal", "type": "negative"}
+        ]
 
-        moment_widgets = []
-        for moment in timeline_moments:
-            moment_widget = ft.Container(
+        template_items = []
+        for template in templates:
+            is_positive = template["type"] == "positive"
+            color = self.theme.positive_main if is_positive else self.theme.negative_main
+
+            item = ft.Container(
                 content=ft.Row([
-                    # Hora
+                    ft.Text(template["emoji"], size=20),
+                    ft.Text(template["text"], size=13, color=self.theme.text_primary, expand=True),
                     ft.Container(
-                        content=ft.Text(moment.time, size=12, weight=ft.FontWeight.W_500,
-                                        color=self.theme.text_hint), width=60
-                    ),
-                    # Emoji
-                    ft.Text(moment.emoji, size=20),
-                    # Texto
-                    ft.Text(moment.text, size=14, color=self.theme.text_secondary, expand=True),
-                    # Indicador
-                    ft.Container(width=8, height=8, border_radius=4,
-                                 bgcolor=self.theme.positive_main if moment.type == "positive"
-                                 else self.theme.negative_main)
-                ], spacing=12, alignment=ft.CrossAxisAlignment.CENTER),
-                padding=ft.padding.all(12), margin=ft.margin.only(bottom=8),
-                border_radius=8, bgcolor=self.theme.surface + "50",
-                border=ft.border.all(1, self.theme.border_color)
+                        content=ft.Text("+", size=16, color=color),
+                        width=30, height=30, border_radius=15,
+                        bgcolor=color + "20", alignment=ft.alignment.center
+                    )
+                ], spacing=12),
+                padding=ft.padding.all(12), border_radius=12,
+                bgcolor=color + "10", border=ft.border.all(1, color + "30"),
+                on_click=lambda e, t=template: self.add_template_item(t)
             )
-            moment_widgets.append(moment_widget)
+            template_items.append(item)
 
         return create_themed_container(
             content=ft.Column([
-                ft.Text("📊 Tu línea de tiempo", size=14, weight=ft.FontWeight.W_500,
-                        color=self.theme.text_secondary),
+                ft.Text("🎯 Situaciones comunes", size=14, weight=ft.FontWeight.W_600, color=self.theme.text_primary),
                 ft.Container(height=12),
-                ft.Column(moment_widgets, spacing=0)
+                ft.Column(template_items, spacing=8)
             ]), theme=self.theme
         )
 
@@ -831,20 +753,13 @@ class InteractiveMomentsScreen:
     def add_timeline_moment(self, moment_type: str):
         """Añadir momento al timeline"""
         if not self.timeline_text_field or not self.timeline_text_field.value:
-            self.show_message("⚠️ Describe qué pasó antes de añadir", is_error=True)
-            return
-
-        # Verificar si ya hay momento en esa hora
-        existing_moment = self.get_moment_for_hour(self.selected_hour)
-        if existing_moment:
-            self.show_message(f"⚠️ Ya hay un momento a las {self.selected_hour:02d}:00", is_error=True)
+            self.show_message("⚠️ Describe qué pasó", is_error=True)
             return
 
         moment = InteractiveMoment(
             emoji="⭐" if moment_type == "positive" else "🌧️",
             text=self.timeline_text_field.value.strip(), moment_type=moment_type,
-            intensity=7 if moment_type == "positive" else 6, category="timeline",
-            time_str=f"{self.selected_hour:02d}:00"
+            category="timeline", time_str=f"{self.selected_hour:02d}:00"
         )
 
         if self.auto_save_moment(moment):
@@ -855,138 +770,22 @@ class InteractiveMomentsScreen:
         else:
             self.show_message("❌ Error guardando momento", is_error=True)
 
-    def get_moment_for_hour(self, hour: int):
-        """Obtener momento para hora específica"""
-        for moment in self.moments:
-            if moment.time.startswith(f"{hour:02d}:"):
-                return moment
-        return None
-
-    # ===============================
-    # MODO 4: TEMPLATES COMPLETO
-    # ===============================
-    def build_templates_mode(self):
-        """Modo Templates - IMPLEMENTACIÓN COMPLETA"""
-
-        templates = {
-            "work": {
-                "title": "💼 Trabajo",
-                "color": self.theme.accent_primary,
-                "items": [
-                    {"emoji": "🎯", "text": "Completé una tarea importante", "type": "positive"},
-                    {"emoji": "🤝", "text": "Buena reunión de equipo", "type": "positive"},
-                    {"emoji": "📊", "text": "Presentación exitosa", "type": "positive"},
-                    {"emoji": "💡", "text": "Tuve una gran idea", "type": "positive"},
-                    {"emoji": "⏰", "text": "Deadline estresante", "type": "negative"},
-                    {"emoji": "🤯", "text": "Demasiadas reuniones", "type": "negative"},
-                    {"emoji": "💻", "text": "Problemas técnicos", "type": "negative"}
-                ]
-            },
-            "social": {
-                "title": "👥 Social & Familia",
-                "color": self.theme.positive_main,
-                "items": [
-                    {"emoji": "☕", "text": "Café con un amigo", "type": "positive"},
-                    {"emoji": "🎉", "text": "Celebración familiar", "type": "positive"},
-                    {"emoji": "💬", "text": "Conversación profunda", "type": "positive"},
-                    {"emoji": "🤗", "text": "Abrazo reconfortante", "type": "positive"},
-                    {"emoji": "😔", "text": "Me sentí solo/a", "type": "negative"},
-                    {"emoji": "🤐", "text": "Conflicto con alguien", "type": "negative"},
-                    {"emoji": "📱", "text": "Demasiado tiempo en redes", "type": "negative"}
-                ]
-            },
-            "health": {
-                "title": "🏃‍♂️ Bienestar & Salud",
-                "color": "#F59E0B",
-                "items": [
-                    {"emoji": "💪", "text": "Ejercicio energizante", "type": "positive"},
-                    {"emoji": "🧘‍♀️", "text": "Meditación relajante", "type": "positive"},
-                    {"emoji": "🥗", "text": "Comida saludable", "type": "positive"},
-                    {"emoji": "😊", "text": "Me siento en forma", "type": "positive"},
-                    {"emoji": "😴", "text": "No dormí bien", "type": "negative"},
-                    {"emoji": "🤒", "text": "Me siento enfermo/a", "type": "negative"},
-                    {"emoji": "🍔", "text": "Comí mal todo el día", "type": "negative"}
-                ]
-            }
-        }
-
-        template_sections = []
-        for category, template in templates.items():
-            section = self.build_template_section(category, template)
-            template_sections.append(section)
-            template_sections.append(ft.Container(height=16))
-
-        return ft.Column([
-                             ft.Text("🎯 Templates", size=20, weight=ft.FontWeight.BOLD, color=self.theme.text_primary),
-                             ft.Container(height=8),
-                             ft.Text("Situaciones comunes organizadas por categorías", size=14,
-                                     color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER),
-                             ft.Container(height=16)
-                         ] + template_sections[:-1])
-
-    def build_template_section(self, category: str, template: dict):
-        """Sección de template por categoría"""
-        # Header
-        header = ft.Row([
-            ft.Text(template["title"], size=16, weight=ft.FontWeight.W_600, color=template["color"]),
-            ft.Container(
-                content=ft.Text(f"{len(template['items'])} opciones", size=12, color=self.theme.text_hint),
-                padding=ft.padding.symmetric(horizontal=8, vertical=4), border_radius=12,
-                bgcolor=template["color"] + "20"
-            )
-        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-
-        # Items
-        template_items = []
-        for item in template["items"]:
-            item_widget = self.build_template_item(item, category, template["color"])
-            template_items.append(item_widget)
-
-        return create_themed_container(
-            content=ft.Column([header, ft.Container(height=12)] + template_items, spacing=8),
-            theme=self.theme, border_radius=16
-        )
-
-    def build_template_item(self, item: dict, category: str, color: str):
-        """Item individual de template"""
-        is_positive = item["type"] == "positive"
-        bg_color = (self.theme.positive_light if is_positive else self.theme.negative_light) + "30"
-        border_color = self.theme.positive_main if is_positive else self.theme.negative_main
-
-        return ft.Container(
-            content=ft.Row([
-                # Emoji
-                ft.Container(content=ft.Text(item["emoji"], size=20), width=40, alignment=ft.alignment.center),
-                # Texto
-                ft.Text(item["text"], size=14, color=self.theme.text_primary, expand=True),
-                # Botón añadir
-                ft.Container(
-                    content=ft.Text("+", size=16, weight=ft.FontWeight.BOLD, color=border_color),
-                    width=30, height=30, border_radius=15, bgcolor=bg_color,
-                    border=ft.border.all(1, border_color), alignment=ft.alignment.center
-                )
-            ], spacing=12, alignment=ft.CrossAxisAlignment.CENTER),
-            padding=ft.padding.all(12), border_radius=12, bgcolor=bg_color,
-            border=ft.border.all(1, border_color + "50"),
-            on_click=lambda e, it=item, cat=category: self.add_template_item(it, cat)
-        )
-
-    def add_template_item(self, item: dict, category: str):
+    def add_template_item(self, template: dict):
         """Añadir item de template"""
         moment = InteractiveMoment(
-            emoji=item["emoji"], text=item["text"], moment_type=item["type"],
-            intensity=7 if item["type"] == "positive" else 6, category=category
+            emoji=template["emoji"], text=template["text"], moment_type=template["type"],
+            category="template"
         )
 
         if self.auto_save_moment(moment):
             self.moments.append(moment)
-            self.show_message(f"✅ {item['emoji']} {item['text']} añadido")
+            self.show_message(f"✅ {template['emoji']} {template['text']} añadido")
             self.refresh_summary()
         else:
             self.show_message("❌ Error guardando momento", is_error=True)
 
     # ===============================
-    # MÉTODOS DE CONTROL
+    # RESUMEN Y CONTROLES
     # ===============================
     def refresh_summary(self):
         """Refrescar resumen"""
@@ -996,74 +795,90 @@ class InteractiveMomentsScreen:
             self.page.update()
 
     def build_moments_summary(self):
-        """Resumen completo de momentos"""
+        """✅ Resumen compacto para móvil"""
         if not self.moments:
             return ft.Container(
-                content=ft.Text("No hay momentos añadidos aún. ¡Empieza añadiendo algunos!",
-                                color=self.theme.text_hint, text_align=ft.TextAlign.CENTER),
-                padding=ft.padding.all(20)
+                content=ft.Text("No hay momentos añadidos aún",
+                                color=self.theme.text_hint, text_align=ft.TextAlign.CENTER, size=12),
+                padding=ft.padding.all(16)
             )
 
         positive_count = len([m for m in self.moments if m.type == "positive"])
         negative_count = len([m for m in self.moments if m.type == "negative"])
 
-        # Estadísticas principales
+        # ✅ Estadísticas compactas
         stats = ft.Row([
             ft.Column([
-                ft.Text(str(positive_count), size=24, weight=ft.FontWeight.BOLD, color=self.theme.positive_main),
-                ft.Text("Positivos", size=12, color=self.theme.text_hint)
+                ft.Text(str(positive_count), size=20, weight=ft.FontWeight.BOLD, color=self.theme.positive_main),
+                ft.Text("Positivos", size=10, color=self.theme.text_hint)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             ft.Column([
-                ft.Text(str(negative_count), size=24, weight=ft.FontWeight.BOLD, color=self.theme.negative_main),
-                ft.Text("Difíciles", size=12, color=self.theme.text_hint)
+                ft.Text(str(negative_count), size=20, weight=ft.FontWeight.BOLD, color=self.theme.negative_main),
+                ft.Text("Difíciles", size=10, color=self.theme.text_hint)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             ft.Column([
-                ft.Text(str(len(self.moments)), size=24, weight=ft.FontWeight.BOLD, color=self.theme.accent_primary),
-                ft.Text("Total", size=12, color=self.theme.text_hint)
+                ft.Text(str(len(self.moments)), size=20, weight=ft.FontWeight.BOLD, color=self.theme.accent_primary),
+                ft.Text("Total", size=10, color=self.theme.text_hint)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         ], alignment=ft.MainAxisAlignment.SPACE_AROUND)
 
-        # Últimos momentos
-        recent_moments = []
-        for moment in self.moments[-3:]:
-            recent_moments.append(ft.Row([
-                ft.Text(moment.emoji, size=20),
-                ft.Text(moment.text, size=14, color=self.theme.text_secondary, expand=True),
-                ft.Text(moment.time, size=12, color=self.theme.text_hint)
-            ], spacing=12))
-
-        # Botones de acción
+        # ✅ Botones de acción compactos
         action_buttons = ft.Row([
-            create_themed_button("🗑️ Limpiar", self.clear_moments, theme=self.theme,
-                                 button_type="negative", width=120, height=40),
-            create_themed_button("💾 Guardar Momentos", self.save_moments, theme=self.theme,
-                                 button_type="positive", width=180, height=40)
-        ], alignment=ft.MainAxisAlignment.SPACE_AROUND)
+            ft.ElevatedButton(
+                "🗑️ Limpiar", on_click=self.clear_moments,
+                style=ft.ButtonStyle(bgcolor=self.theme.negative_main, color="#FFFFFF"),
+                height=35, expand=True
+            ),
+            ft.Container(width=8),
+            ft.ElevatedButton(
+                "💾 Guardar", on_click=self.save_moments,
+                style=ft.ButtonStyle(bgcolor=self.theme.positive_main, color="#FFFFFF"),
+                height=35, expand=True
+            )
+        ])
 
         return create_themed_container(
             content=ft.Column([
-                ft.Text("📈 Resumen del día", size=16, weight=ft.FontWeight.W_600, color=self.theme.text_primary),
-                ft.Container(height=16), stats, ft.Container(height=16),
-                ft.Text("Últimos momentos:", size=14, weight=ft.FontWeight.W_500, color=self.theme.text_secondary),
-                ft.Container(height=8), ft.Column(recent_moments, spacing=8),
-                ft.Container(height=20), action_buttons
-            ]), theme=self.theme
+                ft.Text("📈 Resumen", size=14, weight=ft.FontWeight.W_600, color=self.theme.text_primary),
+                ft.Container(height=12),
+                stats,
+                ft.Container(height=16),
+                action_buttons
+            ]),
+            theme=self.theme
         )
 
     def save_moments(self, e=None):
-        """Guardar todos los momentos"""
+        """✅ CORREGIDO: Guardar todos los momentos usando la nueva integración"""
         if not self.moments:
             self.show_message("⚠️ No hay momentos para guardar", is_error=True)
             return
 
-        print(f"💾 Preparando {len(self.moments)} momentos")
+        print(f"💾 Preparando {len(self.moments)} momentos para guardar")
 
-        if self.on_moments_created:
-            simple_tags = [moment.to_simple_tag() for moment in self.moments]
-            self.on_moments_created(simple_tags)
-            self.show_message(f"✅ {len(self.moments)} momentos enviados")
-        else:
-            self.show_message(f"✅ {len(self.moments)} momentos guardados")
+        try:
+            from services import db
+            user_id = self.current_user['id']
+
+            # ✅ Usar el nuevo método para convertir momentos a entrada diaria
+            entry_id = db.save_interactive_moments_as_entry(
+                user_id=user_id,
+                reflection="Entrada creada desde Momentos Interactivos",
+                worth_it=len([m for m in self.moments if m.type == "positive"]) > len([m for m in self.moments if m.type == "negative"])
+            )
+
+            if entry_id:
+                self.show_message(f"✅ {len(self.moments)} momentos guardados como entrada diaria")
+
+                # ✅ Navegar al calendario para ver el resultado
+                if self.page:
+                    self.page.go("/calendar")
+            else:
+                self.show_message("❌ Error guardando momentos", is_error=True)
+
+        except Exception as e:
+            print(f"❌ Error guardando momentos: {e}")
+            self.show_message("❌ Error guardando momentos", is_error=True)
 
     def clear_moments(self, e=None):
         """Limpiar momentos"""
@@ -1071,42 +886,25 @@ class InteractiveMomentsScreen:
             self.show_message("ℹ️ No hay momentos para eliminar")
             return
 
-        self.moments.clear()
-        self.show_message("🗑️ Momentos eliminados")
-        self.refresh_summary()
+        try:
+            from services import db
+            user_id = self.current_user['id']
 
-    def show_settings_dialog(self, e):
-        """Mostrar diálogo de configuración"""
-        if not self.page:
-            return
+            # ✅ Limpiar de la base de datos también
+            db.clear_interactive_moments_today(user_id)
 
-        settings_dialog = ft.AlertDialog(
-            title=ft.Text("⚙️ Configuración"),
-            content=ft.Column([
-                ft.Row([
-                    ft.Text("Auto-guardar momentos:", expand=True),
-                    ft.Switch(value=self.auto_save_enabled, on_change=self.toggle_auto_save)
-                ]),
-                ft.Text(f"Momentos de hoy: {len(self.moments)}")
-            ], tight=True),
-            actions=[ft.TextButton("Cerrar", on_click=lambda e: self.close_dialog())]
-        )
+            self.moments.clear()
+            self.show_message("🗑️ Momentos eliminados")
+            self.refresh_summary()
+        except Exception as e:
+            print(f"❌ Error limpiando momentos: {e}")
+            self.moments.clear()
+            self.show_message("🗑️ Momentos eliminados")
+            self.refresh_summary()
 
-        self.page.dialog = settings_dialog
-        settings_dialog.open = True
-        self.page.update()
-
-    def toggle_auto_save(self, e):
-        """Alternar auto-guardado"""
-        self.auto_save_enabled = e.control.value
-        print(f"🔄 Auto-guardado {'activado' if self.auto_save_enabled else 'desactivado'}")
-
-    def close_dialog(self):
-        """Cerrar diálogo"""
-        if self.page and self.page.dialog:
-            self.page.dialog.open = False
-            self.page.update()
-
+    # ===============================
+    # NAVEGACIÓN Y MENSAJES
+    # ===============================
     def go_to_calendar(self, e=None):
         """Ir al calendario"""
         if self.page:
@@ -1130,7 +928,7 @@ class InteractiveMomentsScreen:
         print(f"{'❌' if is_error else '✅'} {message}")
         if self.page:
             snack = ft.SnackBar(
-                content=ft.Text(message, color="#FFFFFF"),
+                content=ft.Text(message, color="#FFFFFF", size=12),  # ✅ Texto más pequeño
                 bgcolor=self.theme.negative_main if is_error else self.theme.positive_main,
                 duration=2000
             )
