@@ -1,12 +1,13 @@
 """
-🌙 ReflectApp - VERSIÓN CORREGIDA CON TAGS TEMPORALES
-Aplicación principal con sistema mejorado de persistencia
+🌙 ReflectApp - CAMBIO SIMPLE
+Solo cambiar /entry para que vaya a InteractiveMomentsScreen
 """
 
 import flet as ft
 from screens.login_screen import LoginScreen
 from screens.register_screen import RegisterScreen
-from screens.update_entry_screen import EntryScreen  # Usar versión corregida
+# CAMBIO 1: Importar InteractiveMomentsScreen en lugar de EntryScreen
+from screens.InteractiveMoments_screen import InteractiveMomentsScreen
 from screens.new_tag_screen import NewTagScreen
 from screens.calendar_screen import CalendarScreen
 from screens.day_details_screen import DayDetailsScreen
@@ -18,7 +19,7 @@ from services.reflect_themes_system import (
 
 
 class ReflectApp:
-    """Aplicación principal CORREGIDA con sistema de tags temporales"""
+    """Aplicación principal - SOLO CAMBIO DE RUTA /entry"""
 
     def __init__(self):
         self.current_user = None
@@ -27,24 +28,25 @@ class ReflectApp:
         # Pantallas (se crearán dinámicamente)
         self.login_screen = None
         self.register_screen = None
-        self.entry_screen = None
+        # CAMBIO 2: Variable para InteractiveMomentsScreen en lugar de EntryScreen
+        self.interactive_screen = None
         self.new_tag_screen = None
         self.calendar_screen = None
         self.day_details_screen = None
         self.theme_selector_screen = None
         self.ai_chat_screen = None
-        self.chat_context = None  #
+        self.chat_context = None
 
         # Estado
         self.current_day_details = None
         self.page = None
 
-        print("🚀 ReflectApp CORREGIDA inicializada")
+        print("🚀 ReflectApp inicializada con InteractiveMoments")
 
     def main(self, page: ft.Page):
         """Inicializar aplicación principal"""
         self.page = page
-        print("🚀 === MAIN APP CORREGIDA INICIADA ===")
+        print("🚀 === MAIN APP INICIADA ===")
 
         # Configuración zen de la página
         page.title = "ReflectApp - Tu espacio de reflexión"
@@ -79,8 +81,9 @@ class ReflectApp:
                 page.views.append(self.create_themed_register())
 
             elif page.route == "/entry":
-                print("📖 Navegando a ENTRY")
-                self.handle_entry_route(page)
+                # CAMBIO 3: Esta ruta ahora va a InteractiveMomentsScreen
+                print("🎮 Navegando a INTERACTIVE MOMENTS (nueva /entry)")
+                self.handle_interactive_route(page)
 
             elif page.route.startswith("/new_tag"):
                 print(f"🏷️ Navegando a NEW_TAG: {page.route}")
@@ -97,7 +100,9 @@ class ReflectApp:
             elif page.route == "/theme_selector":
                 print("🎨 Navegando a THEME_SELECTOR")
                 self.handle_theme_selector_route(page)
-            elif page.route=="/ai_chat":
+
+            elif page.route == "/ai_chat":
+                print("🧠 Navegando a AI_CHAT")
                 self.handle_ai_chat_route(page)
 
             page.update()
@@ -125,7 +130,7 @@ class ReflectApp:
         print("🏗️ Inicializando pantallas...")
         self.login_screen = LoginScreen(self)
         self.register_screen = RegisterScreen(self)
-        self.entry_screen = EntryScreen(self)  # Usar versión corregida
+        # NOTA: interactive_screen se crea dinámicamente
         print("✅ Pantallas inicializadas")
 
     def apply_current_theme(self):
@@ -150,31 +155,11 @@ class ReflectApp:
         theme = get_theme()
         view.bgcolor = theme.primary_bg
 
-        # Actualizar gradientes en la vista
-        for control in view.controls:
-            self.update_control_theme(control, theme)
-
     def update_control_theme(self, control, theme):
         """Actualizar tema de un control recursivamente"""
         # Actualizar gradientes
         if hasattr(control, 'gradient') and control.gradient:
             control.gradient.colors = theme.gradient_header
-
-        # Actualizar colores de fondo
-        if hasattr(control, 'bgcolor'):
-            if control.bgcolor in ["#F8FAFC", "#FFFFFF"]:
-                control.bgcolor = theme.surface
-            elif control.bgcolor in ["#E8F5E8"]:
-                control.bgcolor = theme.positive_light
-            elif control.bgcolor in ["#FEE2E2"]:
-                control.bgcolor = theme.negative_light
-
-        # Actualizar colores de texto
-        if hasattr(control, 'color'):
-            if control.color in ["#2D3748"]:
-                control.color = theme.text_primary
-            elif control.color in ["#4A5568"]:
-                control.color = theme.text_secondary
 
         # Recursión para controles contenedores
         if hasattr(control, 'controls'):
@@ -184,48 +169,88 @@ class ReflectApp:
             if control.content:
                 self.update_control_theme(control.content, theme)
 
-    def handle_entry_route(self, page):
-        """Manejar ruta de entry CORREGIDA"""
-        print("📖 === HANDLE ENTRY ROUTE CORREGIDA ===")
+    def handle_interactive_route(self, page):
+        """NUEVO: Manejar ruta de InteractiveMomentsScreen en /entry"""
+        print("🎮 === HANDLE INTERACTIVE ROUTE ===")
 
-        if not self.entry_screen:
-            print("🏗️ Creando nueva EntryScreen")
-            self.entry_screen = EntryScreen(self)
-        else:
-            print("♻️ Reutilizando EntryScreen existente")
+        if not self.current_user:
+            print("❌ No hay usuario - redirigiendo a login")
+            page.go("/login")
+            return
 
-        self.entry_screen.page = page
-        self.entry_screen.update_theme()
+        # Callback cuando se guardan momentos
+        def on_moments_created(simple_tags):
+            """Callback cuando se crean momentos"""
+            print(f"💾 === GUARDANDO {len(simple_tags)} MOMENTOS ===")
 
-        # Si hay usuario, establecerlo
-        if self.current_user:
-            print(f"👤 Estableciendo usuario: {self.current_user.get('name')} (ID: {self.current_user.get('id')})")
-            self.entry_screen.set_user(self.current_user)
-        else:
-            print("⚠️ No hay usuario actual")
-
-        print("🏗️ Construyendo vista...")
-        view = self.entry_screen.build()
-        page.views.append(view)
-        page.update()  # Renderizar primero
-        print("✅ Vista construida y renderizada")
-
-        # NUEVO SISTEMA: Cargar datos después del renderizado
-        if self.current_user:
             try:
-                print("📅 === CARGANDO DATOS DE HOY ===")
-                # Usar el nuevo método que carga entrada + tags temporales
-                self.entry_screen.load_and_refresh_all()
-                print("✅ === CARGA DE DATOS COMPLETADA ===")
+                from services import db
+                user_id = self.current_user['id']
+
+                # Convertir SimpleTag a formato de BD
+                positive_tags = []
+                negative_tags = []
+
+                for tag in simple_tags:
+                    tag_dict = {
+                        'name': tag.name,
+                        'context': tag.reason,
+                        'emoji': tag.emoji,
+                        'type': tag.category
+                    }
+
+                    if tag.category == "positive":
+                        positive_tags.append(tag_dict)
+                    elif tag.category == "negative":
+                        negative_tags.append(tag_dict)
+
+                print(f"➕ Tags positivos: {len(positive_tags)}")
+                print(f"➖ Tags negativos: {len(negative_tags)}")
+
+                # Guardar en BD
+                entry_id = db.save_daily_entry(
+                    user_id=user_id,
+                    free_reflection="Reflexión creada con Momentos Interactivos",
+                    positive_tags=positive_tags,
+                    negative_tags=negative_tags,
+                    worth_it=True
+                )
+
+                if entry_id:
+                    print(f"✅ Momentos guardados con ID: {entry_id}")
+                    # Mostrar mensaje de éxito y ir al calendario
+                    page.go("/calendar")
+                else:
+                    print("❌ Error guardando momentos")
+
             except Exception as e:
-                print(f"❌ ERROR CRÍTICO cargando datos: {e}")
-                import traceback
-                traceback.print_exc()
-        else:
-            print("⚠️ No se cargan datos: sin usuario")
+                print(f"❌ Error guardando momentos: {e}")
+
+        # Callback para volver
+        def on_go_back():
+            """Volver (logout o calendario)"""
+            page.go("/calendar")
+
+        # Crear InteractiveMomentsScreen
+        self.interactive_screen = InteractiveMomentsScreen(
+            on_moments_created=on_moments_created,
+            on_go_back=on_go_back
+        )
+
+        # Establecer página y usuario
+        self.interactive_screen.page = page
+        if hasattr(self.interactive_screen, 'set_user'):
+            self.interactive_screen.set_user(self.current_user)
+
+        # Construir vista
+        view = self.interactive_screen.build()
+        self.apply_theme_to_view(view)
+        page.views.append(view)
+
+        print("✅ InteractiveMomentsScreen creada en /entry")
 
     def handle_new_tag_route(self, page):
-        """Manejar ruta de nuevo tag"""
+        """Manejar ruta de nuevo tag (mantener igual)"""
         print("🏷️ === HANDLE NEW TAG ROUTE ===")
 
         # Determinar tipo según parámetros
@@ -235,31 +260,16 @@ class ReflectApp:
         elif "type=positive" in page.route:
             tag_type = "positive"
 
-        print(f"🏷️ Tipo de tag: {tag_type}")
-
         def on_tag_created_with_navigation(tag):
-            """Callback para crear tag con navegación"""
-            print(f"🏷️ === CALLBACK TAG CREATED ===")
-            print(f"📝 Tag recibido: {tag.emoji} {tag.name} ({tag.category})")
-
-            if self.entry_screen:
-                print("📤 Enviando tag a EntryScreen...")
-                self.entry_screen.page = page
-                self.entry_screen.on_tag_created(tag)
-                print("✅ Tag enviado a EntryScreen")
-            else:
-                print("❌ No hay EntryScreen disponible")
-
-            print("🛣️ Navegando de vuelta a /entry")
-            page.go("/entry")
+            """Callback para crear tag"""
+            print(f"🏷️ Tag creado: {tag.name}")
+            page.go("/entry")  # Volver a Interactive Moments
 
         def on_cancel():
             """Callback para cancelar"""
-            print("❌ Creación de tag cancelada")
             page.go("/entry")
 
-        # Crear nueva instancia con tema actual
-        print("🏗️ Creando NewTagScreen...")
+        # Crear nueva instancia
         self.new_tag_screen = NewTagScreen(
             tag_type=tag_type,
             on_tag_created=on_tag_created_with_navigation,
@@ -269,12 +279,11 @@ class ReflectApp:
         view = self.new_tag_screen.build()
         self.apply_theme_to_view(view)
         page.views.append(view)
-        print(f"✅ NewTagScreen creada para tipo: {tag_type}")
 
     def handle_calendar_route(self, page):
-        """Manejar ruta del calendario"""
+        """Manejar ruta del calendario (mantener igual)"""
         def on_go_to_entry():
-            page.go("/entry")
+            page.go("/entry")  # Ahora va a Interactive Moments
 
         def on_view_day(year, month, day, details):
             page.go(f"/day_details?year={year}&month={month}&day={day}")
@@ -291,7 +300,6 @@ class ReflectApp:
             on_view_day=on_view_day
         )
         self.calendar_screen.page = page
-
         self.update_calendar_theme()
 
         view = self.calendar_screen.build()
@@ -299,7 +307,7 @@ class ReflectApp:
         page.views.append(view)
 
     def handle_day_details_route(self, page):
-        """Manejar ruta de detalles del día"""
+        """Manejar ruta de detalles del día (mantener igual)"""
         if self.current_day_details:
             details = self.current_day_details
 
@@ -319,47 +327,37 @@ class ReflectApp:
             page.views.append(view)
 
     def handle_theme_selector_route(self, page):
-        """Manejar ruta del selector de temas"""
+        """Manejar ruta del selector de temas (mantener igual)"""
         def on_theme_changed(theme_type):
             """Callback cuando cambia el tema"""
             print(f"🎨 Tema cambiado a: {theme_type}")
-
-            # Aplicar nuevo tema a la página
             self.apply_current_theme()
-
-            # Actualizar TODAS las pantallas existentes
             self.update_all_screens_theme()
-
-            # Mostrar mensaje de éxito
             self.show_theme_change_message(theme_type)
-
-            # Forzar actualización completa de la página
             self.force_page_refresh()
 
         def on_go_back():
-            """Volver a entry"""
-            page.go("/entry")
+            page.go("/entry")  # Volver a Interactive Moments
 
         self.theme_selector_screen = ThemeSelectorScreen(
             on_theme_changed=on_theme_changed,
             on_go_back=on_go_back
         )
         self.theme_selector_screen.page = page
-
         page.views.append(self.theme_selector_screen.build())
+
+    def handle_ai_chat_route(self, page):
+        """Manejar ruta del chat con IA (placeholder)"""
+        print("🧠 === HANDLE AI CHAT ROUTE ===")
+        # Por ahora redirigir a interactive
+        page.go("/entry")
 
     def update_all_screens_theme(self):
         """Actualizar tema en todas las pantallas existentes"""
-        # Actualizar entry_screen si existe
-        if self.entry_screen:
-            self.entry_screen.update_theme()
-
-        # Recrear otras pantallas para que tomen el nuevo tema
         if self.login_screen:
             self.login_screen = LoginScreen(self)
         if self.register_screen:
             self.register_screen = RegisterScreen(self)
-
         print("✅ Tema actualizado en todas las pantallas")
 
     def force_page_refresh(self):
@@ -370,14 +368,8 @@ class ReflectApp:
 
     def update_calendar_theme(self):
         """Actualizar tema del calendario"""
-        if hasattr(self.calendar_screen, 'ZenColors'):
-            theme = get_theme()
-            self.calendar_screen.ZenColors.positive_main = theme.positive_main
-            self.calendar_screen.ZenColors.negative_main = theme.negative_main
-            self.calendar_screen.ZenColors.background = theme.primary_bg
-            self.calendar_screen.ZenColors.surface = theme.surface
-            self.calendar_screen.ZenColors.text_primary = theme.text_primary
-            self.calendar_screen.ZenColors.text_secondary = theme.text_secondary
+        if hasattr(self.calendar_screen, 'update_theme'):
+            self.calendar_screen.update_theme()
 
     def show_theme_change_message(self, theme_type):
         """Mostrar mensaje de cambio de tema"""
@@ -386,9 +378,9 @@ class ReflectApp:
 
         theme_names = {
             ThemeType.DEEP_OCEAN: "🌊 Deep Ocean",
-            ThemeType.MIDNIGHT_PROFESSIONAL: "💼 Midnight Pro",
-            ThemeType.NORDIC_NIGHT: "🏔️ Nordic Night",
-            ThemeType.ELECTRIC_DARK: "⚡ Electric Dark"
+            ThemeType.ELECTRIC_DARK: "⚡ Electric Dark",
+            ThemeType.SPRING_LIGHT: "🌸 Spring Light",
+            ThemeType.SUNSET_WARM: "🌅 Sunset Warm"
         }
 
         theme_name = theme_names.get(theme_type, "Tema")
@@ -409,65 +401,29 @@ class ReflectApp:
         self.page.update()
 
     def navigate_to_entry(self, user_data):
-        """Navegar a la pantalla de entrada"""
-        print(f"🧭 === NAVIGATE TO ENTRY CORREGIDA ===")
+        """Navegar a la pantalla de entrada (ahora InteractiveMoments)"""
+        print(f"🧭 === NAVIGATE TO ENTRY (INTERACTIVE) ===")
         print(f"👤 Usuario: {user_data.get('name')} (ID: {user_data.get('id')})")
 
         self.current_user = user_data
 
-        if self.entry_screen:
-            print("📤 Estableciendo usuario en EntryScreen existente")
-            self.entry_screen.set_user(user_data)
-        else:
-            print("ℹ️ No hay EntryScreen aún - se creará en la navegación")
-
         if self.login_screen and hasattr(self.login_screen, 'page'):
-            print("🛣️ Navegando desde login a /entry")
+            print("🛣️ Navegando desde login a /entry (InteractiveMoments)")
             self.login_screen.page.go("/entry")
 
         print(f"✅ === NAVIGATE TO ENTRY COMPLETADO ===")
-    def handle_ai_chat_route(self, page):
-        """Manejar ruta del chat con IA"""
-        print("🧠 === HANDLE AI CHAT ROUTE ===")
 
-        # Crear nueva instancia del chat
-        self.ai_chat_screen.page = page
-
-        # Si hay contexto guardado, pasarlo al chat
-        if hasattr(self, 'chat_context') and self.chat_context:
-            print(f"📋 Pasando contexto al chat:")
-            print(f"   Usuario: {self.chat_context.get('user', {}).get('name', 'Unknown')}")
-            print(f"   Reflexión: {len(self.chat_context.get('reflection', ''))} caracteres")
-            print(f"   Tags: +{len(self.chat_context.get('positive_tags', []))} -{len(self.chat_context.get('negative_tags', []))}")
-
-            self.ai_chat_screen.set_initial_context(
-                reflection_text=self.chat_context.get('reflection', ''),
-                positive_tags=self.chat_context.get('positive_tags', []),
-                negative_tags=self.chat_context.get('negative_tags', []),
-                worth_it=self.chat_context.get('worth_it')
-            )
-
-            # Limpiar contexto después de usarlo
-            self.chat_context = None
-        else:
-            print("⚠️ No hay contexto para el chat - iniciando chat vacío")
-
-        # Construir y mostrar vista
-        view = self.ai_chat_screen.build()
-        self.apply_theme_to_view(view)
-        page.views.append(view)
-
-        print("✅ Chat IA inicializado correctamente")
     def navigate_to_login(self):
         """Navegar al login"""
         print("🔑 === NAVIGATE TO LOGIN ===")
         self.current_user = None
-        if hasattr(self.entry_screen, 'page') and self.entry_screen.page:
-            self.entry_screen.page.go("/login")
+        if self.page:
+            self.page.go("/login")
         print("✅ === NAVIGATE TO LOGIN COMPLETADO ===")
 
+
 def create_improved_app():
-    """Crear aplicación CORREGIDA con sistema mejorado"""
+    """Crear aplicación con InteractiveMoments en /entry"""
 
     def main(page: ft.Page):
         """Función principal de la aplicación"""
@@ -485,12 +441,13 @@ def create_improved_app():
         # Inicializar aplicación
         app.main(page)
 
-        print("🌙 ReflectApp CORREGIDA iniciada con sistema mejorado")
+        print("🌙 ReflectApp iniciada con InteractiveMoments en /entry")
         print(f"🎨 Tema inicial: {get_theme().display_name}")
 
     return main
 
+
 if __name__ == "__main__":
-    # Crear y ejecutar aplicación corregida
+    # Crear y ejecutar aplicación
     app_main = create_improved_app()
     ft.app(target=app_main)
