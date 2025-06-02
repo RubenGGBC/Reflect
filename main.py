@@ -15,7 +15,6 @@ from services.reflect_themes_system import (
     ThemeManager, ThemeType, get_theme, apply_theme_to_page,
     create_gradient_header, theme_manager
 )
-from screens.ai_chat_screen import AIChatScreen
 
 
 class ReflectApp:
@@ -432,7 +431,6 @@ class ReflectApp:
         print("🧠 === HANDLE AI CHAT ROUTE ===")
 
         # Crear nueva instancia del chat
-        self.ai_chat_screen = AIChatScreen(self)
         self.ai_chat_screen.page = page
 
         # Si hay contexto guardado, pasarlo al chat

@@ -358,159 +358,400 @@ class EntryScreen:
                             ),
                             ft.Container(height=12),
                             self.positive_tags_container
-                        ]
-                    ),
-                    theme=self.theme,
-                    is_surface=False
-                ),
+        def build(self):
+    """Construir vista principal zen con layout CORREGIDO + Interactive Moments"""
+    print("🏗️ === CONSTRUYENDO ENTRYSCREEN MEJORADA ===")
 
-                ft.Container(height=16),
+    # Actualizar tema
+    self.theme = get_theme()
+    print(f"🎨 Construyendo EntryScreen con tema: {self.theme.display_name}")
 
-                # Sección MOMENTOS NEGATIVOS
-                create_themed_container(
-                    content=ft.Column(
-                        [
-                            ft.Row(
-                                [
-                                    ft.Text(
-                                        "- MOMENTOS NEGATIVOS",
-                                        size=18,
-                                        weight=ft.FontWeight.W_600,
-                                        color=self.theme.negative_main,
-                                        expand=True
-                                    ),
-                                    # NUEVO: Solo mostrar botón + si no guardó hoy
-                                    ft.Container(
-                                        content=ft.TextButton(
-                                            content=ft.Text(
-                                                "+",
-                                                size=20,
-                                                color=self.theme.negative_main,
-                                                weight=ft.FontWeight.BOLD
-                                            ),
-                                            on_click=self.open_negative_tag_dialog,
-                                            style=ft.ButtonStyle(
-                                                bgcolor=self.theme.negative_light,
-                                                shape=ft.CircleBorder(),
-                                                padding=ft.padding.all(8)
-                                            ),
-                                            disabled=self.is_saved_today
-                                        ),
-                                        bgcolor=self.theme.negative_light,
-                                        border_radius=20,
-                                        padding=ft.padding.all(4)
-                                    ) if not self.is_saved_today else ft.Container()
-                                ]
-                            ),
-                            ft.Container(height=12),
-                            self.negative_tags_container
-                        ]
-                    ),
-                    theme=self.theme,
-                    is_surface=False
-                ),
+    # Campo de reflexión libre zen con tema
+    self.reflection_field = ft.TextField(
+        label="¿Cómo te ha ido el día?",
+        hint_text="Cuéntame sobre tu día... Tómate tu tiempo para reflexionar",
+        multiline=True,
+        min_lines=4,
+        max_lines=8,
+        border=ft.InputBorder.OUTLINE,
+        border_color=self.theme.border_color,
+        focused_border_color=self.theme.accent_primary,
+        border_radius=20,
+        content_padding=ft.padding.all(20),
+        text_style=ft.TextStyle(size=16, height=1.6, color=self.theme.text_primary),
+        cursor_color=self.theme.accent_primary,
+        bgcolor=self.theme.surface,
+        color=self.theme.text_primary,
+        label_style=ft.TextStyle(color=self.theme.text_secondary),
+        # NUEVO: Hacer readonly si ya guardó hoy
+        read_only=self.is_saved_today
+    )
 
-                ft.Container(height=24),
+    # Contenedores para tags dinámicos
+    self.positive_tags_container = ft.Column(spacing=8)
+    self.negative_tags_container = ft.Column(spacing=8)
 
-                # Pregunta final zen
-                create_themed_container(
-                    content=ft.Column(
-                        [
-                            ft.Text(
-                                "¿Ha merecido la pena tu día?",
-                                size=18,
-                                weight=ft.FontWeight.W_500,
-                                color=self.theme.text_primary,
-                                text_align=ft.TextAlign.CENTER
-                            ),
-                            ft.Container(height=20),
-                            ft.Row(
-                                [
-                                    self.worth_it_buttons["yes"],
-                                    ft.Container(width=16),
-                                    self.worth_it_buttons["no"]
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER
-                            )
-                        ]
-                    ),
-                    theme=self.theme
-                ),
+    print(f"📦 Contenedores creados")
 
-                ft.Container(height=32),
+    # Botones para "¿Mereció la pena?" con tema
+    self.worth_it_buttons["yes"] = ft.ElevatedButton(
+        "SÍ",
+        on_click=lambda e: self.set_worth_it(True, e),
+        style=ft.ButtonStyle(
+            bgcolor=self.theme.surface_variant,
+            color=self.theme.text_secondary,
+            elevation=0,
+            padding=ft.padding.symmetric(horizontal=32, vertical=16),
+            shape=ft.RoundedRectangleBorder(radius=20)
+        ),
+        height=48,
+        disabled=self.is_saved_today  # NUEVO: Deshabilitar si ya guardó
+    )
 
-                # BOTONES DE ACCIÓN MEJORADOS - LAYOUT CORREGIDO
-                ft.Column(
+    self.worth_it_buttons["no"] = ft.ElevatedButton(
+        "NO",
+        on_click=lambda e: self.set_worth_it(False, e),
+        style=ft.ButtonStyle(
+            bgcolor=self.theme.surface_variant,
+            color=self.theme.text_secondary,
+            elevation=0,
+            padding=ft.padding.symmetric(horizontal=32, vertical=16),
+            shape=ft.RoundedRectangleBorder(radius=20)
+        ),
+        height=48,
+        disabled=self.is_saved_today  # NUEVO: Deshabilitar si ya guardó
+    )
+
+    # Header con gradiente temático
+    back_button = ft.TextButton(
+        "← Salir",
+        on_click=self.logout_click,
+        style=ft.ButtonStyle(color="#FFFFFF")
+    )
+
+    # LAYOUT CORREGIDO: Botones uno al lado del otro
+    top_buttons_row = ft.Row(
+        [
+            ft.TextButton(
+                "🎨",
+                on_click=self.go_to_theme_selector,
+                style=ft.ButtonStyle(color="#FFFFFF"),
+                tooltip="Cambiar tema"
+            ),
+            ft.TextButton(
+                "📅",
+                on_click=self.go_to_calendar,
+                style=ft.ButtonStyle(color="#FFFFFF"),
+                tooltip="Ver calendario"
+            )
+        ],
+        spacing=0
+    )
+
+    user_name = self.current_user.get('name', 'Viajero') if self.current_user else 'Viajero'
+    header = create_gradient_header(
+        title=f"Hola, {user_name} 🧘‍♀️",
+        left_button=back_button,
+        right_button=top_buttons_row,
+        theme=self.theme
+    )
+
+    # MENSAJE DE ESTADO SI YA GUARDÓ - NUEVO
+    status_message = None
+    if self.is_saved_today:
+        status_message = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.LOCK, color=self.theme.accent_primary, size=20),
+                    ft.Text(
+                        "✅ Entrada del día guardada. Solo puedes visualizar.",
+                        color=self.theme.accent_primary,
+                        size=14,
+                        weight=ft.FontWeight.W_500
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.CENTER
+            ),
+            bgcolor=self.theme.positive_light,
+            padding=ft.padding.all(12),
+            border_radius=12,
+            border=ft.border.all(1, self.theme.positive_main),
+            margin=ft.margin.only(bottom=16)
+        )
+
+    # Vista principal zen con tema
+    main_content = ft.Column(
+        [
+            # Mensaje de estado (si aplica)
+            status_message,
+
+            # Campo de reflexión libre
+            create_themed_container(
+                content=ft.Column(
                     [
-                        # Primera fila: Guardar (solo si no guardó hoy)
+                        ft.Text(
+                            "Reflexión Libre",
+                            size=20,
+                            weight=ft.FontWeight.W_500,
+                            color=self.theme.text_primary
+                        ),
+                        ft.Container(height=16),
+                        self.reflection_field
+                    ]
+                ),
+                theme=self.theme
+            ),
+
+            ft.Container(height=24),
+
+            # Sección MOMENTOS POSITIVOS
+            create_themed_container(
+                content=ft.Column(
+                    [
                         ft.Row(
                             [
-                                create_themed_button(
-                                    "💾 Guardar Reflexión",
-                                    self.save_entry,
-                                    theme=self.theme,
-                                    button_type="positive",
-                                    height=56,
-                                    width=None
-                                ) if not self.is_saved_today else ft.Container()
-                            ],
-                            expand=True,
-                            alignment=ft.MainAxisAlignment.CENTER
-                        ) if not self.is_saved_today else ft.Container(),
-
-                        ft.Container(height=16) if not self.is_saved_today else ft.Container(),
-
-                        # Segunda fila: Chat IA y Calendario
-                        ft.Row(
-                            [
-                                create_themed_button(
-                                    "🤖 Chat IA",
-                                    self.chat_ai,
-                                    theme=self.theme,
-                                    button_type="primary",
-                                    height=56
+                                ft.Text(
+                                    "+ MOMENTOS POSITIVOS",
+                                    size=18,
+                                    weight=ft.FontWeight.W_600,
+                                    color=self.theme.positive_main,
+                                    expand=True
                                 ),
+                                # NUEVO: Solo mostrar botón + si no guardó hoy
+                                ft.Container(
+                                    content=ft.TextButton(
+                                        content=ft.Text(
+                                            "+",
+                                            size=20,
+                                            color=self.theme.positive_main,
+                                            weight=ft.FontWeight.BOLD
+                                        ),
+                                        on_click=self.open_positive_tag_dialog,
+                                        style=ft.ButtonStyle(
+                                            bgcolor=self.theme.positive_light,
+                                            shape=ft.CircleBorder(),
+                                            padding=ft.padding.all(8)
+                                        ),
+                                        disabled=self.is_saved_today
+                                    ),
+                                    bgcolor=self.theme.positive_light,
+                                    border_radius=20,
+                                    padding=ft.padding.all(4)
+                                ) if not self.is_saved_today else ft.Container()
+                            ]
+                        ),
+                        ft.Container(height=12),
+                        self.positive_tags_container
+                    ]
+                ),
+                theme=self.theme,
+                is_surface=False
+            ),
+
+            ft.Container(height=16),
+
+            # Sección MOMENTOS NEGATIVOS
+            create_themed_container(
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.Text(
+                                    "- MOMENTOS NEGATIVOS",
+                                    size=18,
+                                    weight=ft.FontWeight.W_600,
+                                    color=self.theme.negative_main,
+                                    expand=True
+                                ),
+                                # NUEVO: Solo mostrar botón + si no guardó hoy
+                                ft.Container(
+                                    content=ft.TextButton(
+                                        content=ft.Text(
+                                            "+",
+                                            size=20,
+                                            color=self.theme.negative_main,
+                                            weight=ft.FontWeight.BOLD
+                                        ),
+                                        on_click=self.open_negative_tag_dialog,
+                                        style=ft.ButtonStyle(
+                                            bgcolor=self.theme.negative_light,
+                                            shape=ft.CircleBorder(),
+                                            padding=ft.padding.all(8)
+                                        ),
+                                        disabled=self.is_saved_today
+                                    ),
+                                    bgcolor=self.theme.negative_light,
+                                    border_radius=20,
+                                    padding=ft.padding.all(4)
+                                ) if not self.is_saved_today else ft.Container()
+                            ]
+                        ),
+                        ft.Container(height=12),
+                        self.negative_tags_container
+                    ]
+                ),
+                theme=self.theme,
+                is_surface=False
+            ),
+
+            ft.Container(height=24),
+
+            # Pregunta final zen
+            create_themed_container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            "¿Ha merecido la pena tu día?",
+                            size=18,
+                            weight=ft.FontWeight.W_500,
+                            color=self.theme.text_primary,
+                            text_align=ft.TextAlign.CENTER
+                        ),
+                        ft.Container(height=20),
+                        ft.Row(
+                            [
+                                self.worth_it_buttons["yes"],
                                 ft.Container(width=16),
-                                create_themed_button(
-                                    "📅 Calendario",
-                                    self.go_to_calendar,
-                                    theme=self.theme,
-                                    button_type="primary",
-                                    height=56
-                                )
+                                self.worth_it_buttons["no"]
                             ],
-                            expand=True
+                            alignment=ft.MainAxisAlignment.CENTER
                         )
                     ]
                 ),
+                theme=self.theme
+            ),
 
-                ft.Container(height=24)
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            spacing=0
-        )
+            ft.Container(height=32),
 
-        # Filtrar None del contenido principal
-        main_content.controls = [control for control in main_content.controls if control is not None]
+            # ✨ BOTONES DE ACCIÓN MEJORADOS - CON INTERACTIVE MOMENTS ✨
+            ft.Column(
+                [
+                    # Primera fila: Guardar (solo si no guardó hoy)
+                    ft.Row(
+                        [
+                            create_themed_button(
+                                "💾 Guardar Reflexión",
+                                self.save_entry,
+                                theme=self.theme,
+                                button_type="positive",
+                                height=56,
+                                width=None
+                            ) if not self.is_saved_today else ft.Container()
+                        ],
+                        expand=True,
+                        alignment=ft.MainAxisAlignment.CENTER
+                    ) if not self.is_saved_today else ft.Container(),
 
-        view = ft.View(
-            "/entry",
-            [
-                header,
-                ft.Container(
-                    content=main_content,
-                    padding=ft.padding.all(20),
-                    expand=True
-                )
-            ],
-            padding=0,
-            spacing=0,
-            bgcolor=self.theme.primary_bg
-        )
+                    ft.Container(height=16) if not self.is_saved_today else ft.Container(),
 
-        print("🏗️ Vista EntryScreen construida - esperando carga manual")
-        return view
+                    # Segunda fila: Chat IA y Calendario
+                    ft.Row(
+                        [
+                            create_themed_button(
+                                "🤖 Chat IA",
+                                self.chat_ai,
+                                theme=self.theme,
+                                button_type="primary",
+                                height=56
+                            ),
+                            ft.Container(width=16),
+                            create_themed_button(
+                                "📅 Calendario",
+                                self.go_to_calendar,
+                                theme=self.theme,
+                                button_type="primary",
+                                height=56
+                            )
+                        ],
+                        expand=True
+                    ),
 
+                    ft.Container(height=12),
+
+                    # ✨ TERCERA FILA: MOMENTOS INTERACTIVOS - NUEVO ✨
+                    ft.Row(
+                        [
+                            create_themed_button(
+                                "🎮 Momentos Interactivos",
+                                self.open_interactive_moments,
+                                theme=self.theme,
+                                button_type="primary",
+                                height=50,
+                                width=None  # Ocupa todo el ancho
+                            ) if not self.is_saved_today else ft.Container()
+                        ],
+                        expand=True,
+                        alignment=ft.MainAxisAlignment.CENTER
+                    ) if not self.is_saved_today else ft.Container()
+                ]
+            ),
+
+            ft.Container(height=24)
+        ],
+        scroll=ft.ScrollMode.AUTO,
+        spacing=0
+    )
+
+    # Filtrar None del contenido principal
+    main_content.controls = [control for control in main_content.controls if control is not None]
+
+    view = ft.View(
+        "/entry",
+        [
+            header,
+            ft.Container(
+                content=main_content,
+                padding=ft.padding.all(20),
+                expand=True
+            )
+        ],
+        padding=0,
+        spacing=0,
+        bgcolor=self.theme.primary_bg
+    )
+
+    print("🏗️ Vista EntryScreen construida - esperando carga manual")
+    return view
+
+# ✨ AÑADIR ESTE MÉTODO AL FINAL DE LA CLASE EntryScreen ✨
+
+def open_interactive_moments(self, e):
+    """Abrir pantalla de momentos interactivos - NUEVO MÉTODO"""
+    print("🎮 === ABRIENDO MOMENTOS INTERACTIVOS ===")
+    self.page = e.page
+
+    if self.is_saved_today:
+        self.show_error("🔒 No puedes añadir momentos - entrada ya guardada")
+        return
+
+    # Guardar callback para cuando se creen momentos
+    def on_moments_created(simple_tags):
+        """Callback cuando se crean momentos en la pantalla interactiva"""
+        print(f"🎮 Recibidos {len(simple_tags)} momentos interactivos")
+
+        # Procesar cada momento usando el sistema existente
+        for simple_tag in simple_tags:
+            print(f"   📝 {simple_tag.emoji} {simple_tag.name} ({simple_tag.category})")
+
+            # Usar tu sistema existente para añadir el tag
+            try:
+                self.on_tag_created(simple_tag)
+            except Exception as ex:
+                print(f"❌ Error procesando tag: {ex}")
+
+        # Mostrar mensaje de éxito
+        self.show_success(f"🎮 {len(simple_tags)} momentos interactivos añadidos exitosamente")
+
+    # Guardar contexto en la app para que lo use InteractiveMomentsScreen
+    if hasattr(self.app, 'interactive_moments_callback'):
+        self.app.interactive_moments_callback = on_moments_created
+        print("✅ Callback configurado en app")
+    else:
+        print("⚠️ App no tiene atributo interactive_moments_callback")
+
+    # Navegar a la nueva pantalla
+    print("🛣️ Navegando a /interactive_moments")
+    self.page.go("/interactive_moments")
     def load_and_refresh_all(self):
         """Cargar todos los datos y refrescar interfaz - método público"""
         print("🔄 === INICIANDO LOAD AND REFRESH ALL ===")
@@ -992,3 +1233,27 @@ class EntryScreen:
             self.page.overlay.append(snack)
             snack.open = True
             self.page.update()
+
+def open_interactive_moments(self, e):
+    """Abrir pantalla de momentos interactivos"""
+    print("🎮 === ABRIENDO MOMENTOS INTERACTIVOS ===")
+    self.page = e.page
+
+    # Guardar callback para cuando se creen momentos
+    def on_moments_created(simple_tags):
+        """Callback cuando se crean momentos en la pantalla interactiva"""
+        print(f"🎮 Recibidos {len(simple_tags)} momentos interactivos")
+
+        # Procesar cada momento
+        for simple_tag in simple_tags:
+            print(f"   📝 {simple_tag.emoji} {simple_tag.name} ({simple_tag.category})")
+
+            # Usar tu sistema existente
+            self.on_tag_created(simple_tag)
+
+    # Guardar contexto en la app para que lo use InteractiveMomentsScreen
+    if hasattr(self.app, 'interactive_moments_callback'):
+        self.app.interactive_moments_callback = on_moments_created
+
+    # Navegar a la nueva pantalla
+    self.page.go("/interactive_moments")

@@ -1,5 +1,10 @@
+"""
+🔐 Login Screen MEJORADA - ReflectApp
+Basada en el diseño React moderno con glassmorphism y mejor UX
+"""
+
 import flet as ft
-from services.reflect_themes_system import get_theme, create_gradient_header, create_themed_container
+from services.reflect_themes_system import get_theme, apply_theme_to_page
 
 class LoginScreen:
     def __init__(self, app):
@@ -8,43 +13,17 @@ class LoginScreen:
         self.email_field = None
         self.password_field = None
         self.error_container = None
+        self.show_password = False
+        self.is_loading = False
 
     def build(self):
-        """Construir vista de login con temas"""
+        """Construir vista de login moderna con glassmorphism"""
         theme = get_theme()
 
-        self.email_field = ft.TextField(
-            label="📧 Correo electrónico",
-            hint_text="tu@email.com",
-            border=ft.InputBorder.OUTLINE,
-            border_color=theme.border_color,
-            focused_border_color=theme.accent_primary,
-            border_radius=15,
-            filled=True,
-            bgcolor=theme.surface,
-            content_padding=ft.padding.all(16),
-            text_style=ft.TextStyle(size=16, color=theme.text_primary),
-            label_style=ft.TextStyle(size=14, color=theme.accent_primary),
-            cursor_color=theme.accent_primary
-        )
+        # Crear campos del formulario
+        self.create_form_fields(theme)
 
-        self.password_field = ft.TextField(
-            label="🔒 Contraseña",
-            hint_text="••••••••",
-            password=True,
-            can_reveal_password=True,
-            border=ft.InputBorder.OUTLINE,
-            border_color=theme.border_color,
-            focused_border_color=theme.accent_primary,
-            border_radius=15,
-            filled=True,
-            bgcolor=theme.surface,
-            content_padding=ft.padding.all(16),
-            text_style=ft.TextStyle(size=16, color=theme.text_primary),
-            label_style=ft.TextStyle(size=14, color=theme.accent_primary),
-            cursor_color=theme.accent_primary
-        )
-
+        # Crear contenedor de error
         self.error_container = ft.Container(
             content=ft.Text(
                 "",
@@ -56,177 +35,343 @@ class LoginScreen:
             bgcolor=theme.negative_main,
             padding=ft.padding.all(16),
             border_radius=12,
-            visible=False
+            visible=False,
+            margin=ft.margin.only(bottom=16)
         )
 
+        # Hero Section - Icono y título principal
+        hero_section = self.create_hero_section(theme)
+
+        # Formulario con glassmorphism
+        form_section = self.create_form_section(theme)
+
+        # Quote inspiracional
+        quote_section = self.create_quote_section(theme)
+
+        # Vista principal
         view = ft.View(
             "/login",
             controls=[
                 ft.Container(
                     expand=True,
-                    bgcolor=theme.primary_bg,
                     content=ft.Column(
                         scroll=ft.ScrollMode.AUTO,
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            # Header con tema
-                            ft.Container(
-                                content=ft.Column(
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                    controls=[
-                                        ft.Container(height=60),
-                                        ft.Container(
-                                            content=ft.Text("🧘‍♀️", size=80, text_align=ft.TextAlign.CENTER),
-                                            width=100,
-                                            height=100,
-                                            bgcolor=theme.surface,
-                                            border_radius=50,
-                                            alignment=ft.alignment.center,
-                                            shadow=ft.BoxShadow(
-                                                spread_radius=1,
-                                                blur_radius=20,
-                                                color=theme.accent_primary,
-                                                offset=ft.Offset(0, 6)
-                                            )
-                                        ),
-                                        ft.Container(height=24),
-                                        ft.Text("ReflectApp", size=36, weight=ft.FontWeight.BOLD, color="#FFFFFF"),
-                                        ft.Text("🌸 Tu espacio de reflexión diaria", size=16, color=theme.text_secondary),
-                                        ft.Container(height=16),
-                                        ft.Text("✧ ✦ ✧", size=20, color=theme.text_hint)
-                                    ]
-                                ),
-                                gradient=ft.LinearGradient(
-                                    begin=ft.alignment.top_left,
-                                    end=ft.alignment.bottom_right,
-                                    colors=theme.gradient_header
-                                ),
-                                border_radius=ft.border_radius.only(bottom_left=30, bottom_right=30),
-                                padding=ft.padding.only(bottom=40),
-                                shadow=ft.BoxShadow(
-                                    spread_radius=1,
-                                    blur_radius=20,
-                                    color=theme.shadow_color,
-                                    offset=ft.Offset(0, 10)
-                                )
-                            ),
-                            ft.Container(height=40),
-                            # Formulario con tema
-                            create_themed_container(
-                                content=ft.Column(
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                    controls=[
-                                        ft.Text("✨ Iniciar sesión", size=24, weight=ft.FontWeight.W_600, color=theme.text_primary),
-                                        ft.Container(height=32),
-                                        self.email_field,
-                                        ft.Container(height=20),
-                                        self.password_field,
-                                        ft.Container(height=16),
-                                        self.error_container,
-                                        ft.Container(height=32),
-                                        ft.ElevatedButton(
-                                            "🚪 Entrar al santuario",
-                                            width=300,
-                                            height=60,
-                                            on_click=self.login_click,
-                                            style=ft.ButtonStyle(
-                                                bgcolor=theme.accent_primary,
-                                                color="#FFFFFF",
-                                                elevation=8,
-                                                padding=ft.padding.symmetric(vertical=20, horizontal=40),
-                                                shape=ft.RoundedRectangleBorder(radius=20),
-                                                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_600)
-                                            )
-                                        ),
-                                        ft.Container(
-                                            margin=ft.margin.symmetric(vertical=24),
-                                            content=ft.Row(
-                                                controls=[
-                                                    ft.Container(expand=True, bgcolor=theme.border_color, height=1),
-                                                    ft.Text("o", size=14, color=theme.text_hint),
-                                                    ft.Container(expand=True, bgcolor=theme.border_color, height=1)
-                                                ]
-                                            )
-                                        ),
-                                        ft.ElevatedButton(
-                                            "🌱 Crear cuenta",
-                                            width=300,
-                                            height=60,
-                                            on_click=self.register_click,
-                                            style=ft.ButtonStyle(
-                                                bgcolor=theme.positive_main,
-                                                color="#FFFFFF",
-                                                elevation=8,
-                                                padding=ft.padding.symmetric(vertical=20, horizontal=40),
-                                                shape=ft.RoundedRectangleBorder(radius=20),
-                                                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_600)
-                                            )
-                                        ),
-                                        ft.Container(height=16),
-                                        ft.OutlinedButton(
-                                            width=300,
-                                            height=50,
-                                            on_click=self.create_test_user,
-                                            content=ft.Row(
-                                                alignment=ft.MainAxisAlignment.CENTER,
-                                                spacing=8,
-                                                controls=[
-                                                    ft.Text("🧪", size=16),
-                                                    ft.Text("Usuario de prueba", size=14, weight=ft.FontWeight.W_500, color=theme.text_secondary)
-                                                ]
-                                            ),
-                                            style=ft.ButtonStyle(
-                                                color=theme.text_secondary,
-                                                side=ft.BorderSide(1, theme.border_color),
-                                                padding=ft.padding.symmetric(vertical=16, horizontal=32),
-                                                shape=ft.RoundedRectangleBorder(radius=15)
-                                            )
-                                        )
-                                    ]
-                                ),
-                                theme=theme
-                            ),
-                            # Footer con tema
-                            ft.Container(
-                                margin=ft.margin.only(top=32, bottom=40),
-                                content=ft.Column(
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                    controls=[
-                                        ft.Text(
-                                            "💭 Un momento de reflexión puede transformar tu día",
-                                            size=12, color=theme.text_hint, text_align=ft.TextAlign.CENTER, italic=True
-                                        ),
-                                        ft.Container(height=8),
-                                        ft.Container(
-                                            content=ft.Text("🔐 Seguro y privado", size=12, color="#FFFFFF", weight=ft.FontWeight.W_500),
-                                            bgcolor=theme.accent_primary,
-                                            padding=ft.padding.symmetric(horizontal=16, vertical=8),
-                                            border_radius=20
-                                        )
-                                    ]
-                                )
-                            )
+                            ft.Container(height=60),  # Espaciado superior
+                            hero_section,
+                            form_section,
+                            quote_section,
+                            ft.Container(height=40)   # Espaciado inferior
                         ]
-                    )
+                    ),
+                    padding=ft.padding.all(24)
                 )
             ],
-            bgcolor=theme.primary_bg
+            bgcolor=theme.primary_bg,
+            padding=0,
+            spacing=0
         )
 
         return view
 
+    def create_hero_section(self, theme):
+        """Crear sección hero con icono y título"""
+        return ft.Container(
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    # Icono principal con gradiente y sombra
+                    ft.Container(
+                        content=ft.Text("🧘‍♀️", size=50, text_align=ft.TextAlign.CENTER),
+                        width=100,
+                        height=100,
+                        bgcolor=theme.surface,
+                        border_radius=50,
+                        alignment=ft.alignment.center,
+                        shadow=ft.BoxShadow(
+                            spread_radius=0,
+                            blur_radius=20,
+                            color=theme.accent_primary + "40",
+                            offset=ft.Offset(0, 8)
+                        ),
+                        gradient=ft.LinearGradient(
+                            begin=ft.alignment.top_left,
+                            end=ft.alignment.bottom_right,
+                            colors=[theme.accent_primary, theme.positive_main]
+                        )
+                    ),
+
+                    ft.Container(height=24),
+
+                    # Título principal
+                    ft.Text(
+                        "ReflectApp",
+                        size=32,
+                        weight=ft.FontWeight.BOLD,
+                        color=theme.text_primary,
+                        text_align=ft.TextAlign.CENTER
+                    ),
+
+                    # Subtítulo con separadores
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        controls=[
+                            ft.Container(width=32, height=1, bgcolor="#8691A8"),
+                            ft.Text(
+                                "Tu santuario zen",
+                                size=16,
+                                color=theme.text_secondary,
+                                text_align=ft.TextAlign.CENTER
+                            ),
+                            ft.Container(width=32, height=1, bgcolor="#8691A8"),
+                        ]
+                    ),
+
+                    ft.Container(height=8),
+
+                    # Decoración
+                    ft.Text(
+                        "✧ ✦ ✧",
+                        size=16,
+                        color=theme.text_hint,
+                        text_align=ft.TextAlign.CENTER
+                    )
+                ]
+            ),
+            margin=ft.margin.only(bottom=48)
+        )
+
+    def create_form_fields(self, theme):
+        """Crear campos del formulario SIN iconos"""
+
+        # Campo Email sin iconos
+        self.email_field = ft.TextField(
+            label="📧 Correo electrónico",
+            hint_text="tu@email.com",
+            border=ft.InputBorder.OUTLINE,
+            border_color="#E2E8F0",
+            focused_border_color=theme.accent_primary,
+            border_radius=16,
+            filled=True,
+            bgcolor=theme.surface,
+            content_padding=ft.padding.all(20),
+            text_style=ft.TextStyle(size=16, color=theme.text_primary),
+            cursor_color=theme.accent_primary,
+            label_style=ft.TextStyle(size=14, color=theme.text_secondary)
+        )
+
+        # Campo Password sin iconos
+        self.password_field = ft.TextField(
+            label="🔒 Contraseña",
+            hint_text="••••••••",
+            password=True,
+            can_reveal_password=True,
+            border=ft.InputBorder.OUTLINE,
+            border_color="#E2E8F0",
+            focused_border_color=theme.accent_primary,
+            border_radius=16,
+            filled=True,
+            bgcolor=theme.surface,
+            content_padding=ft.padding.all(20),
+            text_style=ft.TextStyle(size=16, color=theme.text_primary),
+            cursor_color=theme.accent_primary,
+            label_style=ft.TextStyle(size=14, color=theme.text_secondary),
+            on_submit=self.login_click
+        )
+
+    def create_form_section(self, theme):
+        """Crear sección del formulario con glassmorphism"""
+        return ft.Container(
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    # Contenedor del formulario con glassmorphism
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                # Campo Email
+                                self.email_field,
+
+                                ft.Container(height=20),
+
+                                # Campo Password
+                                self.password_field,
+
+                                ft.Container(height=16),
+
+                                # Error container
+                                self.error_container,
+
+                                # Botón principal
+                                ft.ElevatedButton(
+                                    content=ft.Row(
+                                        alignment=ft.MainAxisAlignment.CENTER,
+                                        controls=[
+                                            ft.Text("🚪", size=20),
+                                            ft.Container(width=8),
+                                            ft.Text(
+                                                "Entrar zen",
+                                                size=16,
+                                                weight=ft.FontWeight.W_600
+                                            )
+                                        ]
+                                    ),
+                                    on_click=self.login_click,
+                                    width=320,
+                                    height=56,
+                                    style=ft.ButtonStyle(
+                                        bgcolor={"": theme.accent_primary},
+                                        color={"": "#FFFFFF"},
+                                        elevation=8,
+                                        shadow_color=theme.accent_primary + "40",
+                                        shape=ft.RoundedRectangleBorder(radius=16),
+                                        animation_duration=300
+                                    )
+                                ),
+
+                                ft.Container(height=20),
+
+                                # Separador
+                                ft.Row(
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                    controls=[
+                                        ft.Container(
+                                            width=80,
+                                            height=1,
+                                            bgcolor="#E2E8F0"
+                                        ),
+                                        ft.Container(
+                                            content=ft.Text(
+                                                "ó",
+                                                size=14,
+                                                color=theme.text_hint
+                                            ),
+                                            margin=ft.margin.symmetric(horizontal=16)
+                                        ),
+                                        ft.Container(
+                                            width=80,
+                                            height=1,
+                                            bgcolor="#E2E8F0"
+                                        )
+                                    ]
+                                ),
+
+                                ft.Container(height=20),
+
+                                # Botón registro
+                                ft.OutlinedButton(
+                                    content=ft.Row(
+                                        alignment=ft.MainAxisAlignment.CENTER,
+                                        controls=[
+                                            ft.Text("🌱", size=18),
+                                            ft.Container(width=8),
+                                            ft.Text(
+                                                "Crear cuenta",
+                                                size=16,
+                                                weight=ft.FontWeight.W_500
+                                            )
+                                        ]
+                                    ),
+                                    on_click=self.register_click,
+                                    width=320,
+                                    height=56,
+                                    style=ft.ButtonStyle(
+                                        color={"": theme.positive_main},
+                                        side=ft.BorderSide(2, theme.positive_main + "40"),
+                                        shape=ft.RoundedRectangleBorder(radius=16),
+                                        bgcolor={"hovered": theme.positive_main + "10"}
+                                    )
+                                ),
+
+                                # Usuario de prueba
+                                ft.Container(
+                                    content=ft.TextButton(
+                                        content=ft.Text(
+                                            "🧪 Modo desarrollador",
+                                            size=13,
+                                            color=theme.text_hint
+                                        ),
+                                        on_click=self.create_test_user,
+                                        style=ft.ButtonStyle(
+                                            overlay_color={"hovered": "#8691A8" + "10"}
+                                        )
+                                    ),
+                                    margin=ft.margin.only(top=16)
+                                )
+                            ]
+                        ),
+                        width=360,
+                        padding=ft.padding.all(32),
+                        bgcolor=theme.surface,
+                        border_radius=24,
+                        border=ft.border.all(1, "#E2E8F0"),
+                        shadow=ft.BoxShadow(
+                            spread_radius=0,
+                            blur_radius=24,
+                            color="#00000020",
+                            offset=ft.Offset(0, 8)
+                        )
+                    )
+                ]
+            ),
+            margin=ft.margin.only(bottom=32)
+        )
+
+    def create_quote_section(self, theme):
+        """Crear sección de quote inspiracional"""
+        return ft.Container(
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Text(
+                        '"Un momento de paz puede cambiar tu día"',
+                        size=14,
+                        color=theme.text_hint,
+                        italic=True,
+                        text_align=ft.TextAlign.CENTER
+                    ),
+
+                    ft.Container(height=16),
+
+                    ft.Container(
+                        content=ft.Row(
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            controls=[
+                                ft.Text("🔐", size=14),
+                                ft.Container(width=8),
+                                ft.Text(
+                                    "Privado y seguro",
+                                    size=13,
+                                    weight=ft.FontWeight.W_500,
+                                    color=theme.positive_main
+                                )
+                            ]
+                        ),
+                        bgcolor=theme.positive_main + "20",
+                        padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                        border_radius=20,
+                        border=ft.border.all(1, theme.positive_main + "30")
+                    )
+                ]
+            )
+        )
+
     def show_error(self, message):
+        """Mostrar mensaje de error con animación"""
         self.error_container.content.value = f"⚠️ {message}"
         self.error_container.visible = True
         if self.page:
             self.page.update()
 
     def hide_error(self):
+        """Ocultar mensaje de error"""
         self.error_container.visible = False
         if self.page:
             self.page.update()
 
     def show_success(self, message):
+        """Mostrar mensaje de éxito"""
         if self.page:
             theme = get_theme()
             snackbar = ft.SnackBar(
@@ -235,15 +380,25 @@ class LoginScreen:
                 duration=3000,
                 elevation=10
             )
-            self.page.snack_bar = snackbar
+            self.page.overlay.append(snackbar)
             snackbar.open = True
             self.page.update()
 
-    def login_click(self, e):
-        self.page = e.page
-        email = self.email_field.value.strip()
-        password = self.password_field.value
+    def set_loading(self, loading):
+        """Cambiar estado de carga"""
+        self.is_loading = loading
+        # Aquí podrías cambiar el botón para mostrar loading
+        if self.page:
+            self.page.update()
 
+    def login_click(self, e):
+        """Manejar click de login con validaciones mejoradas"""
+        self.page = e.page
+
+        email = self.email_field.value.strip() if self.email_field.value else ""
+        password = self.password_field.value if self.password_field.value else ""
+
+        # Validaciones
         if not email or not password:
             self.show_error("Completa todos los campos para continuar tu viaje")
             return
@@ -252,43 +407,62 @@ class LoginScreen:
             self.show_error("Introduce un email válido para acceder")
             return
 
+        if len(password) < 3:  # Relajamos la validación para demo
+            self.show_error("Contraseña demasiado corta")
+            return
+
         self.hide_error()
+        self.set_loading(True)
 
         try:
             from services import db
             usuario = db.login_user(email, password)
+
             if usuario:
                 nombre = usuario.get("name", email.split("@")[0])
                 self.show_success(f"🌸 ¡Bienvenido de vuelta, {nombre}!")
+
+                # Limpiar campos
                 self.email_field.value = ""
                 self.password_field.value = ""
                 self.page.update()
+
+                # Navegar a entry
                 self.app.navigate_to_entry(usuario)
             else:
                 self.show_error("Credenciales incorrectas. Verifica tus datos")
+
         except Exception as ex:
             print(f"Error en login: {ex}")
             self.show_error("Error del sistema. Intenta de nuevo")
+        finally:
+            self.set_loading(False)
 
     def register_click(self, e):
+        """Navegar a registro"""
         self.page = e.page
         self.page.go("/register")
 
     def create_test_user(self, e):
+        """Crear usuario de prueba"""
         self.page = e.page
         try:
             from services import db
             email = "zen@reflect.app"
             password = "reflect123"
             name = "Viajero Zen"
+
             user_id = db.create_user(email, password, name)
             if user_id:
                 self.show_success("🧪 Perfil zen creado exitosamente")
             else:
                 self.show_success("🧪 Perfil zen ya existe y está listo")
+
+            # Prellenar campos
             self.email_field.value = email
             self.password_field.value = password
             self.page.update()
+
         except Exception as ex:
             print(f"Error creando usuario: {ex}")
             self.show_error("Error creando perfil zen")
