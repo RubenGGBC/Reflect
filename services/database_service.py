@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
 
 class DatabaseService:
-    """Servicio de base de datos zen para ReflectApp - CORREGIDO COMPLETO"""
+    """Servicio de base de datos zen para ReflectApp - CORREGIDO SIN IA"""
 
     def __init__(self, db_path: str = "data/reflect_zen.db"):
         self.db_path = db_path
@@ -42,7 +42,7 @@ class DatabaseService:
                     )
                 """)
 
-                # Tabla de entradas diarias zen
+                # Tabla de entradas diarias zen - SIMPLIFICADA SIN IA
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS daily_entries (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,9 +51,7 @@ class DatabaseService:
                         positive_tags TEXT DEFAULT '[]',
                         negative_tags TEXT DEFAULT '[]',
                         worth_it INTEGER,
-                        overall_sentiment TEXT,
-                        mood_score INTEGER,
-                        ai_summary TEXT,
+                        mood_score INTEGER DEFAULT 5,
                         word_count INTEGER DEFAULT 0,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -62,7 +60,7 @@ class DatabaseService:
                     )
                 """)
 
-                # ✅ NUEVA: Tabla de momentos interactivos
+                # ✅ Tabla de momentos interactivos - MEJORADA
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS interactive_moments (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,37 +70,21 @@ class DatabaseService:
                         text TEXT NOT NULL,
                         moment_type TEXT NOT NULL CHECK (moment_type IN ('positive', 'negative')),
                         intensity INTEGER NOT NULL CHECK (intensity >= 1 AND intensity <= 10),
-                        category TEXT NOT NULL,
+                        category TEXT NOT NULL DEFAULT 'general',
                         time_str TEXT NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         entry_date DATE DEFAULT CURRENT_DATE,
-                        timestamp_data TEXT,
-                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                    )
-                """)
-
-                # ✅ NUEVA: Tabla de tags temporales
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS temp_tags (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        tag_name TEXT NOT NULL,
-                        tag_context TEXT NOT NULL,
-                        tag_type TEXT NOT NULL,
-                        tag_emoji TEXT NOT NULL,
-                        entry_date DATE DEFAULT CURRENT_DATE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        is_active INTEGER DEFAULT 1,
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                     )
                 """)
 
                 # Índices para rendimiento zen
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_entries_user_date ON daily_entries(user_id, entry_date)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_temp_tags_user_date ON temp_tags(user_id, entry_date)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactive_moments_user_date ON interactive_moments(user_id, entry_date)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_interactive_moments_user_date ON interactive_moments(user_id, entry_date, is_active)")
 
                 conn.commit()
-                print("✨ Base de datos zen inicializada correctamente")
+                print("✨ Base de datos zen inicializada correctamente SIN IA")
 
         except Exception as e:
             print(f"❌ Error inicializando base de datos zen: {e}")
@@ -184,35 +166,57 @@ class DatabaseService:
     # MÉTODOS DE MOMENTOS INTERACTIVOS - CORREGIDOS
     # ===============================
     def save_interactive_moment(self, user_id: int, moment_data: dict) -> Optional[int]:
-        """
-        ✅ CORREGIDO: Guardar momento interactivo individual
-        """
+        """✅ CORREGIDO: Guardar momento interactivo individual con persistencia"""
         try:
             today = date.today().isoformat()
 
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
 
-                cursor.execute("""
-                    INSERT INTO interactive_moments (
-                        user_id, moment_id, emoji, text, moment_type, 
-                        intensity, category, time_str, entry_date, timestamp_data
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    user_id,
-                    moment_data.get('id', 0),
-                    moment_data.get('emoji', ''),
-                    moment_data.get('text', ''),
-                    moment_data.get('type', 'positive'),
-                    moment_data.get('intensity', 5),
-                    moment_data.get('category', 'general'),
-                    moment_data.get('time', '00:00'),
-                    today,
-                    moment_data.get('timestamp', '')
-                ))
+                # ✅ VERIFICAR PRIMERO que la columna is_active existe
+                cursor.execute("PRAGMA table_info(interactive_moments)")
+                columns = cursor.fetchall()
+                column_names = [col[1] for col in columns]
+
+                if 'is_active' in column_names:
+                    # Versión con is_active
+                    cursor.execute("""
+                        INSERT INTO interactive_moments (
+                            user_id, moment_id, emoji, text, moment_type, 
+                            intensity, category, time_str, entry_date, is_active
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    """, (
+                        user_id,
+                        moment_data.get('id', str(int(datetime.now().timestamp() * 1000))),
+                        moment_data.get('emoji', ''),
+                        moment_data.get('text', ''),
+                        moment_data.get('type', 'positive'),
+                        moment_data.get('intensity', 5),
+                        moment_data.get('category', 'general'),
+                        moment_data.get('time', datetime.now().strftime("%H:%M")),
+                        today
+                    ))
+                else:
+                    # Versión sin is_active (para compatibilidad)
+                    cursor.execute("""
+                        INSERT INTO interactive_moments (
+                            user_id, moment_id, emoji, text, moment_type, 
+                            intensity, category, time_str, entry_date
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        user_id,
+                        moment_data.get('id', str(int(datetime.now().timestamp() * 1000))),
+                        moment_data.get('emoji', ''),
+                        moment_data.get('text', ''),
+                        moment_data.get('type', 'positive'),
+                        moment_data.get('intensity', 5),
+                        moment_data.get('category', 'general'),
+                        moment_data.get('time', datetime.now().strftime("%H:%M")),
+                        today
+                    ))
 
                 moment_id = cursor.lastrowid
-                print(f"💾 Momento interactivo guardado: {moment_data.get('emoji')} {moment_data.get('text')} (ID: {moment_id})")
+                print(f"💾 Momento guardado: {moment_data.get('emoji')} {moment_data.get('text')} (ID: {moment_id})")
                 return moment_id
 
         except Exception as e:
@@ -222,22 +226,36 @@ class DatabaseService:
             return None
 
     def get_interactive_moments_today(self, user_id: int) -> List[Dict[str, Any]]:
-        """
-        ✅ CORREGIDO: Obtener momentos interactivos del día actual
-        """
+        """✅ CORREGIDO: Obtener momentos activos del día actual"""
         try:
             today = date.today().isoformat()
 
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
 
-                cursor.execute("""
-                    SELECT moment_id, emoji, text, moment_type, intensity, 
-                           category, time_str, timestamp_data, created_at
-                    FROM interactive_moments 
-                    WHERE user_id = ? AND entry_date = ?
-                    ORDER BY time_str, created_at
-                """, (user_id, today))
+                # ✅ VERIFICAR si existe la columna is_active
+                cursor.execute("PRAGMA table_info(interactive_moments)")
+                columns = cursor.fetchall()
+                column_names = [col[1] for col in columns]
+
+                if 'is_active' in column_names:
+                    # Versión con is_active
+                    cursor.execute("""
+                        SELECT moment_id, emoji, text, moment_type, intensity, 
+                               category, time_str, created_at
+                        FROM interactive_moments 
+                        WHERE user_id = ? AND entry_date = ? AND is_active = 1
+                        ORDER BY time_str, created_at
+                    """, (user_id, today))
+                else:
+                    # Versión sin is_active (obtener todos)
+                    cursor.execute("""
+                        SELECT moment_id, emoji, text, moment_type, intensity, 
+                               category, time_str, created_at
+                        FROM interactive_moments 
+                        WHERE user_id = ? AND entry_date = ?
+                        ORDER BY time_str, created_at
+                    """, (user_id, today))
 
                 results = cursor.fetchall()
 
@@ -251,22 +269,19 @@ class DatabaseService:
                         'intensity': row[4],
                         'category': row[5],
                         'time': row[6],
-                        'timestamp': row[7] or '',
-                        'created_at': row[8]
+                        'created_at': row[7]
                     }
                     moments.append(moment_dict)
 
-                print(f"📚 Cargados {len(moments)} momentos interactivos de hoy")
+                print(f"📚 Cargados {len(moments)} momentos de hoy")
                 return moments
 
         except Exception as e:
             print(f"❌ Error obteniendo momentos interactivos: {e}")
             return []
 
-    def clear_interactive_moments_today(self, user_id: int) -> bool:
-        """
-        ✅ CORREGIDO: Eliminar todos los momentos interactivos del día
-        """
+    def deactivate_interactive_moments_today(self, user_id: int) -> bool:
+        """✅ NUEVO: Desactivar momentos del día (no eliminar)"""
         try:
             today = date.today().isoformat()
 
@@ -274,143 +289,99 @@ class DatabaseService:
                 cursor = conn.cursor()
 
                 cursor.execute("""
-                    DELETE FROM interactive_moments 
-                    WHERE user_id = ? AND entry_date = ?
+                    UPDATE interactive_moments 
+                    SET is_active = 0 
+                    WHERE user_id = ? AND entry_date = ? AND is_active = 1
                 """, (user_id, today))
 
-                deleted_count = cursor.rowcount
-                print(f"🗑️ Eliminados {deleted_count} momentos interactivos de hoy")
+                updated_count = cursor.rowcount
+                print(f"✅ Desactivados {updated_count} momentos de hoy")
                 return True
 
         except Exception as e:
-            print(f"❌ Error eliminando momentos interactivos: {e}")
+            print(f"❌ Error desactivando momentos: {e}")
             return False
 
-    def save_interactive_moments_as_entry(self, user_id: int, reflection: str = "", worth_it: Optional[bool] = None) -> Optional[int]:
-        """
-        ✅ NUEVO: Convertir momentos interactivos del día en entrada diaria
-        """
+    def count_moments_today(self, user_id: int) -> Dict[str, int]:
+        """✅ NUEVO: Contar momentos activos del día"""
         try:
-            print(f"🔄 Convirtiendo momentos interactivos en entrada diaria para usuario {user_id}")
+            today = date.today().isoformat()
 
-            # Obtener momentos del día
-            moments = self.get_interactive_moments_today(user_id)
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
 
-            if not moments:
-                print("⚠️ No hay momentos para convertir")
-                return None
+                cursor.execute("""
+                    SELECT moment_type, COUNT(*) 
+                    FROM interactive_moments 
+                    WHERE user_id = ? AND entry_date = ? AND is_active = 1
+                    GROUP BY moment_type
+                """, (user_id, today))
 
-            # Separar por tipo
-            positive_tags = []
-            negative_tags = []
+                results = cursor.fetchall()
+                counts = {"positive": 0, "negative": 0, "total": 0}
 
-            for moment in moments:
-                tag_dict = {
-                    "name": moment['text'],
-                    "context": f"Momento {moment['category']} de intensidad {moment['intensity']} a las {moment['time']}",
-                    "emoji": moment['emoji']
-                }
+                for moment_type, count in results:
+                    counts[moment_type] = count
+                    counts["total"] += count
 
-                if moment['type'] == 'positive':
-                    positive_tags.append(tag_dict)
-                else:
-                    negative_tags.append(tag_dict)
-
-            print(f"📊 Convertidos: {len(positive_tags)} positivos, {len(negative_tags)} negativos")
-
-            # Usar el método existente para guardar entrada
-            entry_id = self.save_daily_entry(
-                user_id=user_id,
-                free_reflection=reflection or "Entrada creada desde Momentos Interactivos",
-                positive_tags=positive_tags,
-                negative_tags=negative_tags,
-                worth_it=worth_it
-            )
-
-            if entry_id:
-                print(f"✅ Entrada diaria creada con ID: {entry_id}")
-                # NO eliminar los momentos, dejarlos para referencia
-                return entry_id
-            else:
-                print("❌ Error creando entrada diaria")
-                return None
+                return counts
 
         except Exception as e:
-            print(f"❌ Error convirtiendo momentos a entrada: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
+            print(f"❌ Error contando momentos: {e}")
+            return {"positive": 0, "negative": 0, "total": 0}
 
     # ===============================
-    # MÉTODOS DE ENTRADAS DIARIAS - SIN IA
+    # MÉTODOS DE ENTRADAS DIARIAS - SIMPLIFICADO SIN IA
     # ===============================
     def save_daily_entry(self, user_id: int, free_reflection: str,
                          positive_tags: List = None, negative_tags: List = None,
-                         worth_it: Optional[bool] = None) -> Optional[int]:
-        """Guardar entrada diaria zen completa - SIN IA"""
+                         worth_it: Optional[bool] = None, mood_score: int = 5) -> Optional[int]:
+        """✅ Guardar entrada diaria SIMPLIFICADA SIN IA"""
         try:
-            print(f"💾 === INICIANDO GUARDADO PARA USUARIO {user_id} ===")
+            print(f"💾 === GUARDANDO ENTRADA DIARIA PARA USUARIO {user_id} ===")
 
-            # Convertir tags a formato JSON SEGURO
-            def tag_to_dict(tag):
-                if hasattr(tag, '__dict__'):
-                    return {
-                        "name": getattr(tag, 'name', str(tag)),
-                        "context": getattr(tag, 'context', ''),
-                        "emoji": getattr(tag, 'emoji', '+' if getattr(tag, 'type', 'positive') == 'positive' else '-')
-                    }
-                elif isinstance(tag, dict):
-                    return {
-                        "name": tag.get('name', ''),
-                        "context": tag.get('context', ''),
-                        "emoji": tag.get('emoji', '+')
-                    }
-                else:
-                    return {
-                        "name": str(tag),
-                        "context": '',
-                        "emoji": '+'
-                    }
+            # Procesar tags de manera segura
+            def process_tags(tags):
+                if not tags:
+                    return []
 
-            positive_tags_list = []
-            if positive_tags:
-                for tag in positive_tags:
-                    tag_dict = tag_to_dict(tag)
-                    positive_tags_list.append(tag_dict)
+                processed = []
+                for tag in tags:
+                    if isinstance(tag, dict):
+                        processed.append({
+                            "name": tag.get('name', ''),
+                            "context": tag.get('context', ''),
+                            "emoji": tag.get('emoji', '✨')
+                        })
+                    else:
+                        processed.append({
+                            "name": str(tag),
+                            "context": '',
+                            "emoji": '✨'
+                        })
+                return processed
 
-            negative_tags_list = []
-            if negative_tags:
-                for tag in negative_tags:
-                    tag_dict = tag_to_dict(tag)
-                    negative_tags_list.append(tag_dict)
+            positive_tags_list = process_tags(positive_tags)
+            negative_tags_list = process_tags(negative_tags)
 
             # Convertir a JSON
             positive_tags_json = json.dumps(positive_tags_list, ensure_ascii=False)
             negative_tags_json = json.dumps(negative_tags_list, ensure_ascii=False)
 
-            # Calcular métricas básicas
+            # Calcular métricas simples
             word_count = len(free_reflection.split())
 
-            # Mood score simple basado en balance
-            total_positive = len(positive_tags_list)
-            total_negative = len(negative_tags_list)
+            # Mood score basado en balance si no se proporciona
+            if mood_score == 5:  # Valor por defecto
+                total_positive = len(positive_tags_list)
+                total_negative = len(negative_tags_list)
 
-            if total_positive > total_negative:
-                mood_score = 7 + min(3, total_positive - total_negative)
-            elif total_negative > total_positive:
-                mood_score = 5 - min(3, total_negative - total_positive)
-            else:
-                mood_score = 5
+                if total_positive > total_negative:
+                    mood_score = 7 + min(2, total_positive - total_negative)
+                elif total_negative > total_positive:
+                    mood_score = 4 - min(2, total_negative - total_positive)
 
             mood_score = max(1, min(10, mood_score))
-
-            # Sentimiento general
-            if mood_score >= 7:
-                sentiment = "positive"
-            elif mood_score <= 4:
-                sentiment = "negative"
-            else:
-                sentiment = "balanced"
 
             # Convertir worth_it a entero para SQLite
             worth_it_int = None
@@ -442,14 +413,12 @@ class DatabaseService:
                             positive_tags = ?,
                             negative_tags = ?,
                             worth_it = ?,
-                            overall_sentiment = ?,
                             mood_score = ?,
-                            ai_summary = ?,
                             word_count = ?,
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                     """, (free_reflection, positive_tags_json, negative_tags_json,
-                          worth_it_int, sentiment, mood_score, "", word_count, entry_id))
+                          worth_it_int, mood_score, word_count, entry_id))
                 else:
                     # CREAR nueva entrada
                     print(f"✨ Creando nueva entrada")
@@ -457,10 +426,10 @@ class DatabaseService:
                     cursor.execute("""
                         INSERT INTO daily_entries (
                             user_id, free_reflection, positive_tags, negative_tags,
-                            worth_it, overall_sentiment, mood_score, ai_summary, word_count, entry_date
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            worth_it, mood_score, word_count, entry_date
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """, (user_id, free_reflection, positive_tags_json, negative_tags_json,
-                          worth_it_int, sentiment, mood_score, "", word_count, today))
+                          worth_it_int, mood_score, word_count, today))
 
                     entry_id = cursor.lastrowid
 
@@ -473,8 +442,69 @@ class DatabaseService:
             traceback.print_exc()
             return None
 
+    def create_daily_entry_from_moments(self, user_id: int, free_reflection: str = "",
+                                        worth_it: Optional[bool] = None) -> Optional[int]:
+        """✅ NUEVO: Crear entrada diaria desde momentos interactivos"""
+        try:
+            print(f"🔄 Creando entrada desde momentos para usuario {user_id}")
+
+            # Obtener momentos activos del día
+            moments = self.get_interactive_moments_today(user_id)
+
+            if not moments:
+                print("⚠️ No hay momentos para convertir")
+                return None
+
+            # Separar por tipo
+            positive_tags = []
+            negative_tags = []
+
+            for moment in moments:
+                tag_dict = {
+                    "name": moment['text'],
+                    "context": f"Momento {moment['category']} a las {moment['time']}",
+                    "emoji": moment['emoji']
+                }
+
+                if moment['type'] == 'positive':
+                    positive_tags.append(tag_dict)
+                else:
+                    negative_tags.append(tag_dict)
+
+            # Calcular mood automático basado en momentos
+            total_positive = len(positive_tags)
+            total_negative = len(negative_tags)
+
+            if total_positive > total_negative:
+                auto_mood = 7
+            elif total_negative > total_positive:
+                auto_mood = 4
+            else:
+                auto_mood = 5
+
+            # Crear entrada
+            entry_id = self.save_daily_entry(
+                user_id=user_id,
+                free_reflection=free_reflection or f"Reflexión del día - {total_positive + total_negative} momentos registrados",
+                positive_tags=positive_tags,
+                negative_tags=negative_tags,
+                worth_it=worth_it,
+                mood_score=auto_mood
+            )
+
+            if entry_id:
+                # Desactivar momentos (no eliminar)
+                self.deactivate_interactive_moments_today(user_id)
+                print(f"✅ Entrada creada desde momentos con ID: {entry_id}")
+
+            return entry_id
+
+        except Exception as e:
+            print(f"❌ Error creando entrada desde momentos: {e}")
+            return None
+
     # ===============================
-    # MÉTODOS DE CONSULTA
+    # MÉTODOS DE CONSULTA - SIMPLIFICADOS
     # ===============================
     def get_user_entries(self, user_id: int, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
         """Obtener entradas zen del usuario"""
@@ -484,8 +514,7 @@ class DatabaseService:
 
                 cursor.execute("""
                     SELECT id, free_reflection, positive_tags, negative_tags, worth_it,
-                           overall_sentiment, mood_score, word_count,
-                           entry_date, created_at, updated_at
+                           mood_score, word_count, entry_date, created_at, updated_at
                     FROM daily_entries 
                     WHERE user_id = ?
                     ORDER BY entry_date DESC, created_at DESC
@@ -500,12 +529,12 @@ class DatabaseService:
                     # Parsear JSON de manera segura
                     try:
                         positive_tags = json.loads(row[2] or "[]")
-                    except (json.JSONDecodeError, TypeError):
+                    except:
                         positive_tags = []
 
                     try:
                         negative_tags = json.loads(row[3] or "[]")
-                    except (json.JSONDecodeError, TypeError):
+                    except:
                         negative_tags = []
 
                     entry = {
@@ -514,12 +543,11 @@ class DatabaseService:
                         "positive_tags": positive_tags,
                         "negative_tags": negative_tags,
                         "worth_it": None if row[4] is None else bool(row[4]),
-                        "overall_sentiment": row[5],
-                        "mood_score": row[6],
-                        "word_count": row[7],
-                        "entry_date": row[8],
-                        "created_at": row[9],
-                        "updated_at": row[10]
+                        "mood_score": row[5],
+                        "word_count": row[6],
+                        "entry_date": row[7],
+                        "created_at": row[8],
+                        "updated_at": row[9]
                     }
                     entries.append(entry)
 
@@ -528,6 +556,27 @@ class DatabaseService:
         except Exception as e:
             print(f"❌ Error obteniendo entradas zen: {e}")
             return []
+
+    def has_submitted_today(self, user_id: int) -> bool:
+        """Verificar si el usuario ya submiteó una entrada hoy"""
+        try:
+            today = date.today().isoformat()
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM daily_entries 
+                    WHERE user_id = ? AND entry_date = ?
+                """, (user_id, today))
+
+                count = cursor.fetchone()[0]
+                return count > 0
+
+        except Exception as e:
+            print(f"❌ Error verificando entrada de hoy: {e}")
+            return False
 
     def get_year_summary(self, user_id: int, year: int) -> Dict[int, Dict[str, int]]:
         """Obtener resumen de todo el año por meses"""
@@ -561,7 +610,7 @@ class DatabaseService:
                     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
                     month = entry_date.month
 
-                    # Contar tags manualmente
+                    # Contar tags
                     try:
                         positive_tags = json.loads(positive_tags_json or "[]")
                         positive_count = len(positive_tags)
@@ -617,7 +666,7 @@ class DatabaseService:
                     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
                     day = entry_date.day
 
-                    # Contar tags manualmente
+                    # Contar tags
                     try:
                         positive_tags = json.loads(positive_tags_json or "[]")
                         positive_count = len(positive_tags)
@@ -701,27 +750,6 @@ class DatabaseService:
         except Exception as e:
             print(f"❌ Error obteniendo entrada del día {year}-{month}-{day}: {e}")
             return None
-
-    def has_submitted_today(self, user_id: int) -> bool:
-        """Verificar si el usuario ya submiteó una entrada hoy"""
-        try:
-            today = date.today().isoformat()
-
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-
-                cursor.execute("""
-                    SELECT COUNT(*) 
-                    FROM daily_entries 
-                    WHERE user_id = ? AND entry_date = ?
-                """, (user_id, today))
-
-                count = cursor.fetchone()[0]
-                return count > 0
-
-        except Exception as e:
-            print(f"❌ Error verificando entrada de hoy: {e}")
-            return False
 
     def get_entry_count(self, user_id: int) -> int:
         """Obtener total de entradas del usuario"""

@@ -1,6 +1,6 @@
 """
-🌙 ReflectApp - MAIN.PY COMPLETO Y CORREGIDO
-Todas las rutas funcionando correctamente
+🌙 ReflectApp - MAIN.PY CORREGIDO SIN IA
+Todas las rutas funcionando correctamente SIN referencias a IA
 """
 
 import flet as ft
@@ -9,7 +9,7 @@ from screens.register_screen import RegisterScreen
 from screens.InteractiveMoments_screen import InteractiveMomentsScreen
 from screens.new_tag_screen import NewTagScreen
 from screens.calendar_screen import CalendarScreen
-from screens.day_details_screen import DailyReviewScreen
+from screens.day_details_screen import ModernDailyReviewScreen  # ✅ Cambiado al moderno
 from screens.theme_selector_screen import ThemeSelectorScreen
 
 # ✅ IMPORTACIONES MÓVILES PARA NOTIFICACIONES
@@ -29,7 +29,7 @@ from services.reflect_themes_system import (
 
 
 class ReflectApp:
-    """Aplicación ReflectApp CON TODAS LAS RUTAS CORREGIDAS"""
+    """Aplicación ReflectApp CORREGIDA SIN IA"""
 
     def __init__(self):
         self.current_user = None
@@ -41,7 +41,7 @@ class ReflectApp:
         self.interactive_screen = None
         self.new_tag_screen = None
         self.calendar_screen = None
-        self.day_details_screen = None
+        self.daily_review_screen = None  # ✅ Cambiar nombre
         self.theme_selector_screen = None
         self.mobile_notification_settings_screen = None
 
@@ -53,12 +53,12 @@ class ReflectApp:
         self.mobile_notification_service = None
         self.notifications_active = False
 
-        print("🚀 ReflectApp inicializada CON TODAS LAS RUTAS CORREGIDAS")
+        print("🚀 ReflectApp inicializada SIN IA - CORREGIDA")
 
     def main(self, page: ft.Page):
         """Inicializar aplicación principal"""
         self.page = page
-        print("🚀 === MAIN APP INICIADA ===")
+        print("🚀 === MAIN APP INICIADA SIN IA ===")
 
         # Configuración de la página
         page.title = "ReflectApp - Tu espacio de reflexión"
@@ -139,11 +139,11 @@ class ReflectApp:
             )
 
     # ===============================
-    # ✅ MANEJO DE RUTAS CORREGIDO
+    # ✅ MANEJO DE RUTAS CORREGIDO SIN IA
     # ===============================
 
     def handle_route_change(self, route):
-        """Manejar cambios de ruta - CORREGIDO COMPLETO"""
+        """Manejar cambios de ruta - CORREGIDO SIN IA"""
         print(f"🛣️ === NAVEGACIÓN A: {self.page.route} ===")
         self.page.views.clear()
 
@@ -173,14 +173,10 @@ class ReflectApp:
             print("📅 Navegando a CALENDAR")
             self.handle_calendar_route()
 
-        # ✅ RUTAS DE DETALLES DE DÍA
-        elif self.page.route.startswith("/day_details"):
-            print("📊 Navegando a DAY_DETAILS")
-            self.handle_day_details_route()
-
+        # ✅ RUTAS DE REVISIÓN DIARIA MODERNA
         elif self.page.route == "/daily_review":
-            print("📝 Navegando a DAILY_REVIEW")
-            self.handle_daily_review_route()
+            print("📝 Navegando a MODERN DAILY REVIEW")
+            self.handle_modern_daily_review_route()
 
         # ✅ RUTA DE SELECTOR DE TEMAS
         elif self.page.route == "/theme_selector":
@@ -210,19 +206,19 @@ class ReflectApp:
             self.page.go("/login")
 
     # ===============================
-    # ✅ HANDLERS DE RUTAS ESPECÍFICAS
+    # ✅ HANDLERS DE RUTAS ESPECÍFICAS CORREGIDOS
     # ===============================
 
     def handle_interactive_route(self):
-        """Manejar ruta de InteractiveMoments"""
+        """✅ CORREGIDO: Manejar ruta de InteractiveMoments sin IA"""
         if not self.current_user:
             print("❌ No hay usuario - redirigiendo a login")
             self.page.go("/login")
             return
 
         def on_moments_created(simple_tags):
-            """Callback cuando se crean momentos"""
-            print(f"💾 === GUARDANDO {len(simple_tags)} MOMENTOS ===")
+            """✅ CORREGIDO: Callback cuando se crean momentos SIN IA"""
+            print(f"💾 === GUARDANDO {len(simple_tags)} MOMENTOS SIN IA ===")
 
             try:
                 from services import db
@@ -244,16 +240,18 @@ class ReflectApp:
                     elif tag.category == "negative":
                         negative_tags.append(tag_dict)
 
+                # ✅ Guardar SIN IA
                 entry_id = db.save_daily_entry(
                     user_id=user_id,
                     free_reflection="Reflexión creada con Momentos Interactivos",
                     positive_tags=positive_tags,
                     negative_tags=negative_tags,
-                    worth_it=True
+                    worth_it=True,
+                    mood_score=7 if len(positive_tags) > len(negative_tags) else 5
                 )
 
                 if entry_id:
-                    print(f"✅ Momentos guardados con ID: {entry_id}")
+                    print(f"✅ Momentos guardados SIN IA con ID: {entry_id}")
 
                     # Notificación de éxito
                     if self.mobile_notification_service:
@@ -351,15 +349,9 @@ class ReflectApp:
         self.apply_theme_to_view(view)
         self.page.views.append(view)
 
-    def handle_day_details_route(self):
-        """Manejar ruta de detalles del día - REDIRIGIR A DAILY REVIEW"""
-        print("📊 === HANDLE DAY DETAILS ROUTE ===")
-        # Redirigir a la pantalla de revisión diaria moderna
-        self.page.go("/daily_review")
-
-    def handle_daily_review_route(self):
-        """Manejar ruta de revisión diaria"""
-        print("📝 === HANDLE DAILY REVIEW ROUTE ===")
+    def handle_modern_daily_review_route(self):
+        """✅ NUEVO: Manejar ruta de revisión diaria moderna SIN IA"""
+        print("📝 === HANDLE MODERN DAILY REVIEW ROUTE ===")
 
         if not self.current_user:
             print("❌ No hay usuario - redirigiendo a login")
@@ -370,14 +362,15 @@ class ReflectApp:
             """Volver al calendario"""
             self.page.go("/calendar")
 
-        self.day_details_screen = DailyReviewScreen(
+        # ✅ Usar la nueva pantalla moderna
+        self.daily_review_screen = ModernDailyReviewScreen(
             app=self,
             user_data=self.current_user,
             on_go_back=on_go_back
         )
 
-        self.day_details_screen.page = self.page
-        view = self.day_details_screen.build()
+        self.daily_review_screen.page = self.page
+        view = self.daily_review_screen.build()
         self.apply_theme_to_view(view)
         self.page.views.append(view)
 
@@ -457,7 +450,7 @@ class ReflectApp:
 
     def navigate_to_entry(self, user_data):
         """Navegar a la pantalla de entrada"""
-        print(f"🧭 === NAVIGATE TO ENTRY ===")
+        print(f"🧭 === NAVIGATE TO ENTRY SIN IA ===")
         print(f"👤 Usuario: {user_data.get('name')} (ID: {user_data.get('id')})")
 
         self.current_user = user_data
@@ -469,7 +462,7 @@ class ReflectApp:
             print("🛣️ Navegando desde login a /entry")
             self.login_screen.page.go("/entry")
 
-        print(f"✅ === NAVIGATE TO ENTRY COMPLETADO ===")
+        print(f"✅ === NAVIGATE TO ENTRY COMPLETADO SIN IA ===")
 
     def navigate_to_login(self):
         """Navegar al login"""
@@ -562,10 +555,10 @@ class ReflectApp:
 
 
 def create_improved_app():
-    """Crear aplicación con todas las rutas corregidas"""
+    """Crear aplicación SIN IA - TODAS LAS RUTAS CORREGIDAS"""
 
     def main(page: ft.Page):
-        """Función principal de la aplicación"""
+        """Función principal de la aplicación SIN IA"""
         app = ReflectApp()
 
         # Configurar página base
@@ -577,25 +570,30 @@ def create_improved_app():
         apply_theme_to_page(page)
         app.main(page)
 
-        print("🌙 ReflectApp iniciada CON TODAS LAS RUTAS FUNCIONANDO")
+        print("🌙 ReflectApp iniciada SIN IA - TODAS LAS RUTAS FUNCIONANDO")
         print(f"🎨 Tema inicial: {get_theme().display_name}")
         print("🔔 Notificaciones móviles: ACTIVAS")
-        print("✅ Rutas corregidas: /calendar, /theme_selector, /daily_review")
+        print("✅ Rutas corregidas SIN IA: /calendar, /theme_selector, /daily_review")
+        print("❌ IA COMPLETAMENTE REMOVIDA del sistema")
 
     return main
 
 
 if __name__ == "__main__":
-    print("🚀 === INICIANDO REFLECTAPP CON RUTAS CORREGIDAS ===")
-    print("📋 Rutas disponibles:")
+    print("🚀 === INICIANDO REFLECTAPP SIN IA - RUTAS CORREGIDAS ===")
+    print("📋 Rutas disponibles SIN IA:")
     print("   🏠 /login - Pantalla de inicio de sesión")
     print("   📝 /register - Registro de nuevos usuarios")
-    print("   🎮 /entry - Momentos interactivos principales")
+    print("   🎮 /entry - Momentos interactivos principales (PERSISTENTES)")
     print("   🏷️ /new_tag - Crear nuevos tags")
     print("   📅 /calendar - Calendario con historial")
-    print("   📊 /daily_review - Revisión diaria moderna")
+    print("   📊 /daily_review - Revisión diaria moderna SIN IA")
     print("   🎨 /theme_selector - Selector de temas")
-    print("   🔔 /mobile_notification_settings - Config notificaciones")
+    print("   🔔 /mobile_notification_settings - Config notifSicaciones")
+    print("=" * 60)
+    print("❌ TODAS LAS REFERENCIAS A IA HAN SIDO REMOVIDAS")
+    print("✅ PERSISTENCIA DE MOMENTOS CORREGIDA")
+    print("✅ LAYOUT MÓVIL OPTIMIZADO Y CENTRADO")
     print("=" * 60)
 
     # Crear y ejecutar aplicación

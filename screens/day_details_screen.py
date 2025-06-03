@@ -1,7 +1,3 @@
-"""
-📝 Daily Review Screen - NUEVA PANTALLA MODERNA
-Pantalla para revisar y completar el día con reflexión y evaluación final
-"""
 
 import flet as ft
 from datetime import datetime, date
@@ -11,13 +7,17 @@ from services.reflect_themes_system import (
     create_gradient_header
 )
 
-class DailyReviewScreen:
-    """Pantalla moderna para revisar el día completo"""
+class ModernDailyReviewScreen:
+    """Pantalla moderna para revisar el día completo - SIN IA"""
 
-    def __init__(self, app=None, user_data=None, on_go_back: Callable = None):
+    def __init__(self, app=None, user_data=None, on_go_back: Callable = None, selected_date: date = None):
         self.app = app
         self.user_data = user_data
         self.on_go_back = on_go_back
+
+        # ✅ NUEVO: Fecha específica o día actual
+        self.selected_date = selected_date or date.today()
+        self.is_today = self.selected_date == date.today()
 
         # Estado
         self.page = None
@@ -32,17 +32,18 @@ class DailyReviewScreen:
         # UI Components
         self.worth_it_buttons = []
         self.mood_slider = None
+        self.moments_count = {"positive": 0, "negative": 0, "total": 0}
 
-        print("📝 DailyReviewScreen inicializada")
+        print(f"📝 ModernDailyReviewScreen inicializada para fecha: {self.selected_date} - SIN IA")
 
     def build(self):
-        """Construir vista principal"""
+        """Construir vista principal moderna"""
         self.theme = get_theme()
 
-        # Cargar datos del día
-        self.load_today_data()
+        # Cargar datos del día específico
+        self.load_day_data()
 
-        # Header
+        # Header compacto con fecha
         back_button = ft.TextButton(
             "← Volver",
             on_click=self.go_back,
@@ -50,38 +51,47 @@ class DailyReviewScreen:
         )
 
         user_name = self.user_data.get('name', 'Viajero') if self.user_data else 'Viajero'
-        today_str = date.today().strftime("%d %b")
+
+        # ✅ NUEVO: Mostrar fecha específica
+        date_str = self.selected_date.strftime("%d %b")
+        if not self.is_today:
+            date_str += f" '{self.selected_date.strftime('%y')}"
+
+        title = f"📝 {'Tu día' if self.is_today else 'Día'} - {date_str}"
 
         header = create_gradient_header(
-            title=f"📝 Revisa tu día - {today_str}",
+            title=title,
             left_button=back_button,
             theme=self.theme
         )
 
-        # Contenido principal
+        # Contenido principal con scroll horizontal en secciones
         content = ft.Column([
-            # Introducción
-            self.build_intro_section(),
+            # ✅ NUEVO: Banner de fecha si no es hoy
+            self.build_date_banner() if not self.is_today else ft.Container(),
+
+            # Introducción moderna
+            self.build_modern_intro(),
+            ft.Container(height=12),
+
+            # Sección de momentos con scroll horizontal
+            self.build_moments_carousel(),
+            ft.Container(height=12),
+
+            # Reflexión libre moderna
+            self.build_modern_reflection(),
+            ft.Container(height=12),
+
+            # Evaluación rápida con sliders
+            self.build_quick_evaluation(),
+            ft.Container(height=12),
+
+            # Insights automáticos simples
+            self.build_simple_insights(),
             ft.Container(height=16),
 
-            # Resumen de momentos
-            self.build_moments_summary(),
-            ft.Container(height=16),
-
-            # Reflexión libre
-            self.build_reflection_section(),
-            ft.Container(height=16),
-
-            # Evaluación del día
-            self.build_worth_it_section(),
-            ft.Container(height=16),
-
-            # Mood score
-            self.build_mood_section(),
-            ft.Container(height=20),
-
-            # Botones de acción
-            self.build_action_buttons(),
+            # Botones de acción modernos
+            self.build_modern_actions(),
             ft.Container(height=20)
 
         ], scroll=ft.ScrollMode.AUTO, spacing=0)
@@ -93,7 +103,7 @@ class DailyReviewScreen:
                 header,
                 ft.Container(
                     content=content,
-                    padding=ft.padding.all(16),
+                    padding=ft.padding.all(12),
                     expand=True
                 )
             ],
@@ -104,8 +114,28 @@ class DailyReviewScreen:
 
         return view
 
-    def load_today_data(self):
-        """Cargar datos del día actual"""
+    def build_date_banner(self):
+        """✅ NUEVO: Banner para mostrar cuando es una fecha pasada"""
+        if self.is_today:
+            return ft.Container()
+
+        date_formatted = self.selected_date.strftime("%A, %d de %B de %Y")
+
+        return create_themed_container(
+            content=ft.Row([
+                ft.Text("📅", size=20),
+                ft.Container(width=8),
+                ft.Column([
+                    ft.Text("Revisando día pasado", size=12, weight=ft.FontWeight.W_500,
+                            color=self.theme.text_secondary),
+                    ft.Text(date_formatted, size=11, color=self.theme.text_hint)
+                ], expand=True)
+            ], alignment=ft.CrossAxisAlignment.CENTER),
+            theme=self.theme
+        )
+
+    def load_day_data(self):
+        """✅ MODIFICADO: Cargar datos del día específico (no solo hoy)"""
         if not self.user_data:
             print("⚠️ No hay datos de usuario")
             return
@@ -113,11 +143,12 @@ class DailyReviewScreen:
         try:
             from services import db
             user_id = self.user_data['id']
+            target_date = self.selected_date.isoformat()
 
-            print(f"📚 Cargando datos del día para usuario {user_id}")
+            print(f"📚 Cargando datos del día {target_date} para usuario {user_id}")
 
-            # Cargar momentos interactivos
-            moments = db.get_interactive_moments_today(user_id)
+            # ✅ NUEVO: Cargar momentos del día específico
+            moments = self.get_interactive_moments_by_date(user_id, target_date)
 
             # Separar por tipo
             self.moments_data = {"positive": [], "negative": []}
@@ -127,303 +158,543 @@ class DailyReviewScreen:
                 else:
                     self.moments_data['negative'].append(moment)
 
-            print(f"📊 Cargados: {len(self.moments_data['positive'])} positivos, {len(self.moments_data['negative'])} negativos")
+            # ✅ NUEVO: Contar momentos del día específico
+            self.moments_count = self.count_moments_by_date(user_id, target_date)
 
-            # Cargar entrada existente si existe
-            entries = db.get_user_entries(user_id, limit=1)
-            if entries and entries[0]['entry_date'] == date.today().isoformat():
-                entry = entries[0]
-                self.reflection_text = entry.get('free_reflection', '')
-                self.worth_it_value = entry.get('worth_it')
-                self.mood_score = entry.get('mood_score', 5)
-                print(f"📄 Entrada existente cargada")
+            print(f"📊 Cargados: {self.moments_count['positive']} positivos, {self.moments_count['negative']} negativos")
+
+            # ✅ MODIFICADO: Cargar entrada del día específico
+            entries = db.get_user_entries(user_id, limit=50)  # Más entradas para buscar
+            target_entry = None
+
+            for entry in entries:
+                if entry['entry_date'] == target_date:
+                    target_entry = entry
+                    break
+
+            if target_entry:
+                self.reflection_text = target_entry.get('free_reflection', '')
+                self.worth_it_value = target_entry.get('worth_it')
+                self.mood_score = target_entry.get('mood_score', 5)
+                print(f"📄 Entrada del {target_date} cargada")
             else:
                 self.reflection_text = ""
-                print(f"📄 No hay entrada previa")
+                print(f"📄 No hay entrada para {target_date}")
 
         except Exception as e:
             print(f"❌ Error cargando datos del día: {e}")
             self.moments_data = {"positive": [], "negative": []}
             self.reflection_text = ""
+            self.moments_count = {"positive": 0, "negative": 0, "total": 0}
 
-    def build_intro_section(self):
-        """Sección de introducción"""
-        total_moments = len(self.moments_data['positive']) + len(self.moments_data['negative'])
+    def get_interactive_moments_by_date(self, user_id: int, target_date: str) -> List[Dict[str, Any]]:
+        """✅ NUEVO: Obtener momentos de una fecha específica"""
+        try:
+            import sqlite3
+            from services import db
+
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Verificar si existe la columna is_active
+                cursor.execute("PRAGMA table_info(interactive_moments)")
+                columns = cursor.fetchall()
+                column_names = [col[1] for col in columns]
+
+                if 'is_active' in column_names:
+                    # Versión con is_active
+                    cursor.execute("""
+                        SELECT moment_id, emoji, text, moment_type, intensity, 
+                               category, time_str, created_at
+                        FROM interactive_moments 
+                        WHERE user_id = ? AND entry_date = ? AND is_active = 1
+                        ORDER BY time_str, created_at
+                    """, (user_id, target_date))
+                else:
+                    # Versión sin is_active
+                    cursor.execute("""
+                        SELECT moment_id, emoji, text, moment_type, intensity, 
+                               category, time_str, created_at
+                        FROM interactive_moments 
+                        WHERE user_id = ? AND entry_date = ?
+                        ORDER BY time_str, created_at
+                    """, (user_id, target_date))
+
+                results = cursor.fetchall()
+
+                moments = []
+                for row in results:
+                    moment_dict = {
+                        'id': row[0],
+                        'emoji': row[1],
+                        'text': row[2],
+                        'type': row[3],
+                        'intensity': row[4],
+                        'category': row[5],
+                        'time': row[6],
+                        'created_at': row[7]
+                    }
+                    moments.append(moment_dict)
+
+                print(f"📚 Cargados {len(moments)} momentos del {target_date}")
+                return moments
+
+        except Exception as e:
+            print(f"❌ Error obteniendo momentos de fecha específica: {e}")
+            return []
+
+    def count_moments_by_date(self, user_id: int, target_date: str) -> Dict[str, int]:
+        """✅ NUEVO: Contar momentos de una fecha específica"""
+        try:
+            import sqlite3
+            from services import db
+
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Verificar si existe la columna is_active
+                cursor.execute("PRAGMA table_info(interactive_moments)")
+                columns = cursor.fetchall()
+                column_names = [col[1] for col in columns]
+
+                if 'is_active' in column_names:
+                    cursor.execute("""
+                        SELECT moment_type, COUNT(*) 
+                        FROM interactive_moments 
+                        WHERE user_id = ? AND entry_date = ? AND is_active = 1
+                        GROUP BY moment_type
+                    """, (user_id, target_date))
+                else:
+                    cursor.execute("""
+                        SELECT moment_type, COUNT(*) 
+                        FROM interactive_moments 
+                        WHERE user_id = ? AND entry_date = ?
+                        GROUP BY moment_type
+                    """, (user_id, target_date))
+
+                results = cursor.fetchall()
+
+                counts = {"positive": 0, "negative": 0}
+                for moment_type, count in results:
+                    if moment_type in counts:
+                        counts[moment_type] = count
+
+                counts["total"] = counts["positive"] + counts["negative"]
+                return counts
+
+        except Exception as e:
+            print(f"❌ Error contando momentos por fecha: {e}")
+            return {"positive": 0, "negative": 0, "total": 0}
+
+    def build_modern_intro(self):
+        """✅ MODIFICADO: Introducción moderna con estadísticas para cualquier fecha"""
+        total_moments = self.moments_count['total']
 
         if total_moments > 0:
-            intro_text = f"Has registrado {total_moments} momentos hoy. Es hora de reflexionar sobre tu día completo."
+            day_text = "este día" if not self.is_today else "hoy"
+            intro_text = f"Se capturaron {total_moments} momentos {day_text}"
             intro_emoji = "🌟"
+            stats_visible = True
         else:
-            intro_text = "Aún no has registrado momentos específicos, pero puedes reflexionar sobre tu día."
+            if self.is_today:
+                intro_text = "¿Cómo ha sido tu día? Vamos a reflexionar juntos"
+            else:
+                intro_text = "No hay momentos específicos registrados este día"
             intro_emoji = "💭"
+            stats_visible = total_moments > 0
+
+        # Stats rápidas
+        stats_row = ft.Row([
+            self.create_stat_bubble(self.moments_count['positive'], "Positivos", self.theme.positive_main, "😊"),
+            self.create_stat_bubble(self.moments_count['negative'], "Difíciles", self.theme.negative_main, "🌧️"),
+            self.create_stat_bubble(total_moments, "Total", self.theme.accent_primary, "📊")
+        ], alignment=ft.MainAxisAlignment.SPACE_AROUND) if stats_visible else ft.Container()
 
         return create_themed_container(
             content=ft.Column([
                 ft.Row([
-                    ft.Text(intro_emoji, size=32),
-                    ft.Container(width=16),
+                    ft.Text(intro_emoji, size=28),
+                    ft.Container(width=12),
                     ft.Column([
-                        ft.Text("Hora de reflexionar", size=18, weight=ft.FontWeight.BOLD,
-                                color=self.theme.text_primary),
-                        ft.Text(intro_text, size=14, color=self.theme.text_secondary)
+                        ft.Text("Revisión del día" if not self.is_today else "Hora de reflexionar",
+                                size=16, weight=ft.FontWeight.BOLD, color=self.theme.text_primary),
+                        ft.Text(intro_text, size=12, color=self.theme.text_secondary)
                     ], expand=True)
-                ], alignment=ft.CrossAxisAlignment.CENTER)
+                ], alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Container(height=12) if stats_visible else ft.Container(),
+                stats_row
             ]),
             theme=self.theme
         )
 
-    def build_moments_summary(self):
-        """Resumen visual de momentos del día"""
-        positive_count = len(self.moments_data['positive'])
-        negative_count = len(self.moments_data['negative'])
+    def create_stat_bubble(self, value: int, label: str, color: str, emoji: str):
+        """Crear burbuja de estadística"""
+        return ft.Container(
+            content=ft.Column([
+                ft.Text(emoji, size=16),
+                ft.Text(str(value), size=16, weight=ft.FontWeight.BOLD, color=color),
+                ft.Text(label, size=9, color=self.theme.text_hint)
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
+            width=70,
+            height=60,
+            padding=ft.padding.all(8),
+            border_radius=12,
+            bgcolor=color + "15",
+            border=ft.border.all(1, color + "40")
+        )
 
-        if positive_count == 0 and negative_count == 0:
+    def build_moments_carousel(self):
+        """Carousel horizontal de momentos"""
+        if not self.moments_data['positive'] and not self.moments_data['negative']:
             return create_themed_container(
                 content=ft.Column([
-                    ft.Text("📋 Momentos del día", size=16, weight=ft.FontWeight.W_600,
+                    ft.Text("📱 Momentos del día", size=14, weight=ft.FontWeight.W_600,
                             color=self.theme.text_primary),
-                    ft.Container(height=12),
-                    ft.Text("No hay momentos específicos registrados. Puedes usar la reflexión libre abajo.",
-                            size=13, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER)
+                    ft.Container(height=8),
+                    ft.Text("No hay momentos específicos registrados este día.",
+                            size=11, color=self.theme.text_secondary, text_align=ft.TextAlign.CENTER)
                 ]),
                 theme=self.theme
             )
 
-        # Estadísticas
-        stats_row = ft.Row([
-            ft.Column([
-                ft.Text(str(positive_count), size=24, weight=ft.FontWeight.BOLD,
-                        color=self.theme.positive_main),
-                ft.Text("Positivos", size=12, color=self.theme.text_secondary)
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-
-            ft.Container(width=2, height=40, bgcolor=self.theme.border_color),
-
-            ft.Column([
-                ft.Text(str(negative_count), size=24, weight=ft.FontWeight.BOLD,
-                        color=self.theme.negative_main),
-                ft.Text("Difíciles", size=12, color=self.theme.text_secondary)
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        ], alignment=ft.MainAxisAlignment.SPACE_AROUND)
-
-        # Muestra de momentos recientes
-        recent_moments = []
+        # Combinar y ordenar momentos por tiempo
         all_moments = self.moments_data['positive'] + self.moments_data['negative']
+        all_moments.sort(key=lambda x: x.get('time', '00:00'))
 
-        # Ordenar por tiempo y tomar los últimos 3
-        sorted_moments = sorted(all_moments, key=lambda x: x.get('time', '00:00'), reverse=True)[:3]
+        # Crear cards de momentos
+        moment_cards = []
+        for moment in all_moments:
+            card = self.create_moment_card(moment)
+            moment_cards.append(card)
 
-        for moment in sorted_moments:
-            color = self.theme.positive_main if moment['type'] == 'positive' else self.theme.negative_main
-            recent_moments.append(
-                ft.Row([
-                    ft.Text(moment['emoji'], size=16),
-                    ft.Text(moment['text'], size=13, color=self.theme.text_secondary, expand=True),
-                    ft.Text(moment['time'], size=11, color=self.theme.text_hint),
-                    ft.Container(width=4, height=4, border_radius=2, bgcolor=color)
-                ], spacing=8)
-            )
+        # Row con scroll horizontal
+        moments_scroll = ft.Row(
+            moment_cards,
+            spacing=8,
+            scroll=ft.ScrollMode.AUTO
+        )
 
         return create_themed_container(
             content=ft.Column([
-                ft.Text("📋 Momentos del día", size=16, weight=ft.FontWeight.W_600,
+                ft.Text("📱 Momentos del día", size=14, weight=ft.FontWeight.W_600,
                         color=self.theme.text_primary),
-                ft.Container(height=12),
-                stats_row,
-                ft.Container(height=16),
-                ft.Text("Últimos momentos:", size=13, weight=ft.FontWeight.W_500,
-                        color=self.theme.text_secondary),
                 ft.Container(height=8),
-                ft.Column(recent_moments, spacing=6) if recent_moments else ft.Text("Sin momentos recientes",
-                                                                                    size=12, color=self.theme.text_hint)
+                ft.Container(
+                    content=moments_scroll,
+                    height=80
+                )
             ]),
             theme=self.theme
         )
 
-    def build_reflection_section(self):
-        """Sección de reflexión libre"""
+    def create_moment_card(self, moment):
+        """Crear card de momento individual"""
+        is_positive = moment['type'] == 'positive'
+        color = self.theme.positive_main if is_positive else self.theme.negative_main
+
+        return ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Text(moment['emoji'], size=16),
+                    ft.Text(moment['time'], size=8, color=self.theme.text_hint)
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                ft.Container(height=4),
+                ft.Text(
+                    moment['text'][:20] + "..." if len(moment['text']) > 20 else moment['text'],
+                    size=10,
+                    color=self.theme.text_primary,
+                    text_align=ft.TextAlign.CENTER
+                )
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            width=90,
+            height=70,
+            padding=ft.padding.all(8),
+            border_radius=12,
+            bgcolor=color + "15",
+            border=ft.border.all(1, color + "40")
+        )
+
+    def build_modern_reflection(self):
+        """✅ MODIFICADO: Reflexión libre moderna - solo editable si es hoy"""
         self.reflection_field = ft.TextField(
-            label="¿Cómo fue tu día? Reflexiona libremente...",
+            label="💭 ¿Cómo fue tu día? Reflexiona libremente..." if self.is_today else "💭 Reflexión del día",
             multiline=True,
-            min_lines=4,
-            max_lines=6,
+            min_lines=3,
+            max_lines=5,
             value=getattr(self, 'reflection_text', ''),
             border_radius=12,
             bgcolor=self.theme.surface,
             border_color=self.theme.border_color,
             focused_border_color=self.theme.accent_primary,
-            content_padding=ft.padding.all(16),
-            text_style=ft.TextStyle(color=self.theme.text_primary)
+            content_padding=ft.padding.all(12),
+            text_style=ft.TextStyle(color=self.theme.text_primary),
+            read_only=not self.is_today  # ✅ Solo editable si es hoy
         )
 
-        # Prompts de ayuda
-        prompts = [
-            "¿Qué aprendiste hoy?",
-            "¿Qué te hizo sonreír?",
-            "¿Qué cambiarías?",
-            "¿Cómo te sientes ahora?"
-        ]
+        # Prompts solo si es hoy
+        if self.is_today:
+            prompts = [
+                "¿Qué aprendiste?", "¿Qué te hizo sonreír?", "¿Qué cambiarías?",
+                "¿Cómo te sientes?", "¿Qué te sorprendió?", "¿De qué estás agradecido?"
+            ]
 
-        prompt_buttons = []
-        for i in range(0, len(prompts), 2):
-            row = []
-            for j in range(2):
-                if i + j < len(prompts):
-                    prompt = prompts[i + j]
-                    btn = ft.Container(
-                        content=ft.Text(prompt, size=11, color=self.theme.text_secondary,
-                                        text_align=ft.TextAlign.CENTER),
-                        padding=ft.padding.symmetric(horizontal=12, vertical=8),
-                        border_radius=16,
-                        bgcolor=self.theme.surface,
-                        border=ft.border.all(1, self.theme.border_color),
-                        on_click=lambda e, p=prompt: self.add_prompt_to_reflection(p),
-                        expand=True
-                    )
-                    row.append(btn)
-            if row:
-                prompt_buttons.append(ft.Row(row, spacing=8))
+            prompt_chips = []
+            for prompt in prompts:
+                chip = ft.Container(
+                    content=ft.Text(prompt, size=10, color=self.theme.text_secondary,
+                                    text_align=ft.TextAlign.CENTER),
+                    padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                    border_radius=16,
+                    bgcolor=self.theme.surface,
+                    border=ft.border.all(1, self.theme.border_color),
+                    on_click=lambda e, p=prompt: self.add_prompt_to_reflection(p)
+                )
+                prompt_chips.append(chip)
+
+            prompts_scroll = ft.Row(
+                prompt_chips,
+                spacing=6,
+                scroll=ft.ScrollMode.AUTO
+            )
+
+            return create_themed_container(
+                content=ft.Column([
+                    self.reflection_field,
+                    ft.Container(height=10),
+                    ft.Text("💡 Toca para añadir:", size=11, weight=ft.FontWeight.W_500,
+                            color=self.theme.text_secondary),
+                    ft.Container(height=6),
+                    ft.Container(content=prompts_scroll, height=35)
+                ]),
+                theme=self.theme
+            )
+        else:
+            return create_themed_container(
+                content=self.reflection_field,
+                theme=self.theme
+            )
+
+    def build_quick_evaluation(self):
+        """✅ MODIFICADO: Evaluación rápida - solo editable si es hoy"""
+        # Slider de mood
+        self.mood_slider = ft.Slider(
+            min=1, max=10, value=self.mood_score, divisions=9,
+            on_change=self.on_mood_change if self.is_today else None,
+            active_color=self.get_mood_color(self.mood_score),
+            thumb_color=self.get_mood_color(self.mood_score),
+            disabled=not self.is_today  # ✅ Solo editable si es hoy
+        )
+
+        # Worth it como toggle buttons modernos
+        worth_it_section = self.build_modern_worth_it()
 
         return create_themed_container(
             content=ft.Column([
-                ft.Text("💭 Reflexión libre", size=16, weight=ft.FontWeight.W_600,
+                # Mood slider
+                ft.Text("🎭 Calificación del día", size=14, weight=ft.FontWeight.W_600,
                         color=self.theme.text_primary),
-                ft.Container(height=12),
-                self.reflection_field,
-                ft.Container(height=12),
-                ft.Text("💡 Ideas para reflexionar:", size=13, weight=ft.FontWeight.W_500,
-                        color=self.theme.text_secondary),
                 ft.Container(height=8),
-                ft.Column(prompt_buttons, spacing=6)
+
+                ft.Row([
+                    ft.Text("😢", size=16),
+                    ft.Container(content=self.mood_slider, expand=True),
+                    ft.Text("🤩", size=16)
+                ]),
+
+                ft.Container(height=6),
+
+                # Valor actual centrado
+                ft.Text(f"{int(self.mood_score)}/10 - {self.get_mood_label(self.mood_score)}",
+                        size=12, weight=ft.FontWeight.BOLD,
+                        color=self.get_mood_color(self.mood_score),
+                        text_align=ft.TextAlign.CENTER),
+
+                ft.Container(height=16),
+
+                # Worth it section
+                worth_it_section
             ]),
             theme=self.theme
         )
 
-    def build_worth_it_section(self):
-        """Sección de evaluación final del día"""
-        self.worth_it_buttons = []
-
-        # Opciones
+    def build_modern_worth_it(self):
+        """✅ MODIFICADO: Worth it moderna - solo editable si es hoy"""
         options = [
-            {"value": True, "emoji": "😊", "text": "SÍ, mereció la pena", "color": self.theme.positive_main},
-            {"value": False, "emoji": "😔", "text": "NO, no mereció la pena", "color": self.theme.negative_main},
-            {"value": None, "emoji": "🤷", "text": "No estoy seguro/a", "color": self.theme.text_hint}
+            {"value": True,"text": "Valió la pena", "color": self.theme.positive_main},
+            {"value": False, "text": "No valió la pena", "color": self.theme.negative_main},
+            {"value": None,  "text": "No estoy seguro", "color": self.theme.text_hint}
         ]
 
-        option_widgets = []
+        self.worth_it_buttons = []
+        button_widgets = []
+
         for option in options:
             is_selected = self.worth_it_value == option["value"]
 
             btn = ft.Container(
                 content=ft.Row([
-                    ft.Text(option["emoji"], size=24),
-                    ft.Container(width=12),
-                    ft.Text(option["text"], size=14, weight=ft.FontWeight.W_500,
-                            color=self.theme.text_primary, expand=True),
-                    ft.Container(
-                        width=20, height=20, border_radius=10,
-                        bgcolor=option["color"] if is_selected else "transparent",
-                        border=ft.border.all(2, option["color"])
-                    )
-                ], alignment=ft.CrossAxisAlignment.CENTER),
-                padding=ft.padding.all(16),
-                border_radius=12,
-                bgcolor=option["color"] + "15" if is_selected else self.theme.surface,
-                border=ft.border.all(2 if is_selected else 1,
-                                     option["color"] if is_selected else self.theme.border_color),
-                on_click=lambda e, val=option["value"]: self.set_worth_it(val)
+                    ft.Container(width=6),
+                    ft.Text(option["text"], size=11, weight=ft.FontWeight.W_500,
+                            color="#FFFFFF" if is_selected else self.theme.text_primary)
+                ], alignment=ft.MainAxisAlignment.START),
+                padding=ft.padding.symmetric(horizontal=12, vertical=8),
+                border_radius=8,
+                bgcolor=option["color"] if is_selected else self.theme.surface,
+                border=ft.border.all(1, option["color"]),
+                on_click=lambda e, val=option["value"]: self.set_worth_it(val) if self.is_today else None,
+                expand=True,
+                opacity=1.0 if self.is_today else 0.7  # ✅ Visual para días pasados
             )
 
             self.worth_it_buttons.append(btn)
-            option_widgets.append(btn)
+            button_widgets.append(btn)
 
-        return create_themed_container(
-            content=ft.Column([
-                ft.Text("⚖️ ¿Mereció la pena el día?", size=16, weight=ft.FontWeight.W_600,
-                        color=self.theme.text_primary),
-                ft.Container(height=12),
-                ft.Column(option_widgets, spacing=8)
-            ]),
-            theme=self.theme
-        )
-
-    def build_mood_section(self):
-        """Sección de evaluación de ánimo"""
-        self.mood_slider = ft.Slider(
-            min=1, max=10, value=self.mood_score, divisions=9,
-            on_change=self.on_mood_change,
-            active_color=self.get_mood_color(self.mood_score),
-            thumb_color=self.get_mood_color(self.mood_score)
-        )
-
-        mood_emojis = ["😢", "😔", "😐", "🙂", "😊", "😄", "🤗", "😁", "🥳", "🤩"]
-        current_emoji = mood_emojis[min(int(self.mood_score) - 1, 9)]
-
-        return create_themed_container(
-            content=ft.Column([
-                ft.Text("🎭 ¿Cómo calificas tu día?", size=16, weight=ft.FontWeight.W_600,
-                        color=self.theme.text_primary),
-                ft.Container(height=16),
-
-                # Slider visual
-                ft.Row([
-                    ft.Text("😢", size=20),
-                    ft.Container(content=self.mood_slider, expand=True),
-                    ft.Text("🤩", size=20)
-                ]),
-
-                ft.Container(height=16),
-
-                # Valor actual
-                ft.Row([
-                    ft.Text(current_emoji, size=32),
-                    ft.Container(width=16),
-                    ft.Column([
-                        ft.Text(f"{int(self.mood_score)}/10", size=24, weight=ft.FontWeight.BOLD,
-                                color=self.get_mood_color(self.mood_score)),
-                        ft.Text(self.get_mood_label(self.mood_score), size=14,
-                                color=self.theme.text_secondary)
-                    ])
-                ], alignment=ft.CrossAxisAlignment.CENTER)
-            ]),
-            theme=self.theme
-        )
-
-    def build_action_buttons(self):
-        """Botones de acción final"""
-        return ft.Row([
-            ft.ElevatedButton(
-                content=ft.Row([
-                    ft.Text("💾", size=16),
-                    ft.Container(width=8),
-                    ft.Text("Guardar día", size=14, weight=ft.FontWeight.W_500)
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                on_click=self.save_daily_review,
-                style=ft.ButtonStyle(
-                    bgcolor=self.theme.positive_main,
-                    color="#FFFFFF",
-                    shape=ft.RoundedRectangleBorder(radius=12)
-                ),
-                height=50,
-                expand=True
-            ),
-            ft.Container(width=12),
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Text("📅", size=16),
-                    ft.Container(width=8),
-                    ft.Text("Ver calendario", size=14)
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                on_click=self.go_to_calendar,
-                style=ft.ButtonStyle(
-                    color=self.theme.accent_primary,
-                    side=ft.BorderSide(2, self.theme.accent_primary),
-                    shape=ft.RoundedRectangleBorder(radius=12)
-                ),
-                height=50,
-                expand=True
-            )
+        return ft.Column([
+            ft.Text("⚖️ ¿Mereció la pena el día?", size=14, weight=ft.FontWeight.W_600,
+                    color=self.theme.text_primary),
+            ft.Container(height=8),
+            ft.Row(button_widgets, spacing=6)
         ])
+
+    def build_simple_insights(self):
+        """Insights automáticos simples (sin IA externa)"""
+        insights = self.generate_simple_insights()
+
+        if not insights:
+            return ft.Container()
+
+        insight_chips = []
+        for insight in insights:
+            chip = ft.Container(
+                content=ft.Text(insight, size=10, color=self.theme.text_primary,
+                                text_align=ft.TextAlign.CENTER),
+                padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                border_radius=12,
+                bgcolor=self.theme.accent_primary + "20",
+                border=ft.border.all(1, self.theme.accent_primary + "40")
+            )
+            insight_chips.append(chip)
+
+        # Create rows of chips (2 per row max)
+        chip_rows = []
+        current_row = []
+
+        for i, chip in enumerate(insight_chips):
+            current_row.append(chip)
+            if len(current_row) == 2 or i == len(insight_chips) - 1:
+                # Create row with current chips
+                row = ft.Row(
+                    controls=current_row.copy(),
+                    spacing=6,
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+                chip_rows.append(row)
+                current_row = []
+
+        return create_themed_container(
+            content=ft.Column([
+                ft.Text("✨ Observaciones del día", size=14, weight=ft.FontWeight.W_600,
+                        color=self.theme.text_primary),
+                ft.Container(height=8),
+                ft.Column(
+                    controls=chip_rows,
+                    spacing=6
+                )
+            ]),
+            theme=self.theme
+        )
+
+    def generate_simple_insights(self):
+        """Generar insights simples basados en datos (sin IA externa)"""
+        insights = []
+
+        positive_count = self.moments_count['positive']
+        negative_count = self.moments_count['negative']
+        total_count = self.moments_count['total']
+
+        # Insights basados en balance
+        if positive_count > negative_count and positive_count > 0:
+            insights.append(f"🌟 Día mayormente positivo ({positive_count} vs {negative_count})")
+        elif negative_count > positive_count and negative_count > 0:
+            insights.append(f"🌧️ Día con desafíos ({negative_count} vs {positive_count})")
+        elif positive_count == negative_count and total_count > 0:
+            insights.append("⚖️ Día equilibrado entre altos y bajos")
+
+        # Insights sobre actividad
+        if total_count > 5:
+            insights.append("📈 Día muy activo emocionalmente")
+        elif total_count == 0:
+            insights.append("🕯️ Día tranquilo y sereno")
+
+        # Insights sobre mood
+        if self.mood_score >= 8:
+            insights.append("😄 Excelente estado de ánimo")
+        elif self.mood_score <= 3:
+            insights.append("💙 Día desafiante, pero valiente")
+
+        # Insights sobre reflexión
+        reflection_length = len(getattr(self, 'reflection_text', ''))
+        if reflection_length > 100:
+            insights.append("📝 Reflexión profunda y detallada")
+
+        return insights[:3]  # Máximo 3 insights
+
+    def build_modern_actions(self):
+        """✅ MODIFICADO: Botones de acción modernos - adaptados según fecha"""
+        if self.is_today:
+            # Botones para día actual
+            return ft.Row([
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Text("💾", size=14),
+                        ft.Container(width=6),
+                        ft.Text("Completar día", size=12, weight=ft.FontWeight.W_500)
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    on_click=self.save_daily_review,
+                    style=ft.ButtonStyle(
+                        bgcolor=self.theme.positive_main,
+                        color="#FFFFFF",
+                        shape=ft.RoundedRectangleBorder(radius=10)
+                    ),
+                    height=45,
+                    expand=True
+                ),
+                ft.Container(width=10),
+                ft.OutlinedButton(
+                    content=ft.Row([
+                        ft.Text("📅", size=14),
+                        ft.Container(width=6),
+                        ft.Text("Calendario", size=12)
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    on_click=self.go_to_calendar,
+                    style=ft.ButtonStyle(
+                        color=self.theme.accent_primary,
+                        side=ft.BorderSide(2, self.theme.accent_primary),
+                        shape=ft.RoundedRectangleBorder(radius=10)
+                    ),
+                    height=45,
+                    expand=True
+                )
+            ], alignment=ft.MainAxisAlignment.CENTER)
+        else:
+            # Botones para días pasados
+            return ft.Row([
+                ft.OutlinedButton(
+                    content=ft.Row([
+                        ft.Text("📅", size=14),
+                        ft.Container(width=6),
+                        ft.Text("Volver al calendario", size=12)
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    on_click=self.go_to_calendar,
+                    style=ft.ButtonStyle(
+                        color=self.theme.accent_primary,
+                        side=ft.BorderSide(2, self.theme.accent_primary),
+                        shape=ft.RoundedRectangleBorder(radius=10)
+                    ),
+                    height=45,
+                    expand=True
+                )
+            ], alignment=ft.MainAxisAlignment.CENTER)
 
     # ===============================
     # MÉTODOS DE CONTROL
@@ -477,7 +748,7 @@ class DailyReviewScreen:
             return "Excelente"
 
     def save_daily_review(self, e=None):
-        """Guardar revisión diaria completa"""
+        """✅ CORREGIDO: Guardar revisión diaria sin IA"""
         if not self.user_data:
             self.show_message("❌ Error: No hay datos de usuario", is_error=True)
             return
@@ -495,7 +766,7 @@ class DailyReviewScreen:
             # Preparar datos
             reflection = self.reflection_field.value.strip()
 
-            # Convertir momentos a tags
+            # Convertir momentos a tags si existen
             positive_tags = []
             negative_tags = []
 
@@ -515,17 +786,22 @@ class DailyReviewScreen:
                 }
                 negative_tags.append(tag)
 
-            # Guardar entrada completa
+            # ✅ Guardar entrada diaria SIN IA
             entry_id = db.save_daily_entry(
                 user_id=user_id,
                 free_reflection=reflection,
                 positive_tags=positive_tags,
                 negative_tags=negative_tags,
-                worth_it=self.worth_it_value
+                worth_it=self.worth_it_value,
+                mood_score=int(self.mood_score)
             )
 
             if entry_id:
-                self.show_message("✅ Día guardado correctamente")
+                # ✅ Desactivar momentos después de guardar
+                if self.moments_data['positive'] or self.moments_data['negative']:
+                    db.deactivate_interactive_moments_today(user_id)
+
+                self.show_message("✅ Día completado y guardado correctamente")
 
                 # Navegar al calendario después de un momento
                 if self.page:
@@ -560,7 +836,7 @@ class DailyReviewScreen:
         print(f"{'❌' if is_error else '✅'} {message}")
         if self.page:
             snack = ft.SnackBar(
-                content=ft.Text(message, color="#FFFFFF", size=14),
+                content=ft.Text(message, color="#FFFFFF", size=12),
                 bgcolor=self.theme.negative_main if is_error else self.theme.positive_main,
                 duration=3000
             )
