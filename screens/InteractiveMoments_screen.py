@@ -1,6 +1,6 @@
 """
-🎮 Interactive Moments Screen - CORREGIDO PARA MÓVIL
-✅ Persistencia corregida ✅ Diseño móvil optimizado ✅ Header compacto
+🎮 Interactive Moments Screen - COMPLETA CON NOTIFICACIONES MÓVILES
+✅ Persistencia corregida ✅ Diseño móvil optimizado ✅ Header compacto ✅ Botón notificaciones
 """
 
 import flet as ft
@@ -77,7 +77,7 @@ class InteractiveMoment:
         return moment
 
 class InteractiveMomentsScreen:
-    """Pantalla Interactive Moments - OPTIMIZADA PARA MÓVIL"""
+    """Pantalla Interactive Moments - OPTIMIZADA PARA MÓVIL CON NOTIFICACIONES"""
 
     def __init__(self, app=None, on_moments_created: Callable = None, on_go_back: Callable = None):
         self.app = app
@@ -108,7 +108,7 @@ class InteractiveMomentsScreen:
         self.data_loaded = False
         self.auto_save_enabled = True
 
-        print("🎮 InteractiveMomentsScreen OPTIMIZADA PARA MÓVIL inicializada")
+        print("🎮 InteractiveMomentsScreen OPTIMIZADA PARA MÓVIL CON NOTIFICACIONES inicializada")
 
     def set_user(self, user_data):
         """Establecer usuario actual"""
@@ -189,17 +189,17 @@ class InteractiveMomentsScreen:
         return True
 
     def build(self):
-        """✅ CORREGIDO: Construir vista principal optimizada para móvil"""
+        """✅ CORREGIDO: Construir vista principal optimizada para móvil CON NOTIFICACIONES"""
         self.theme = get_theme()
 
-        # ✅ Header COMPACTO para móvil
+        # ✅ Header COMPACTO para móvil CON BOTÓN DE NOTIFICACIONES
         back_button = ft.TextButton(
             "← Volver",
             on_click=self.go_back,
             style=ft.ButtonStyle(color="#FFFFFF")
         )
 
-        # ✅ Botones más pequeños y compactos
+        # ✅ Botones más pequeños y compactos CON NOTIFICACIONES
         action_buttons = ft.Row([
             ft.Container(
                 content=ft.Text("🎨", size=16),
@@ -216,6 +216,15 @@ class InteractiveMomentsScreen:
                 border_radius=8,
                 padding=ft.padding.all(8),
                 tooltip="Calendario"
+            ),
+            # ✅ NUEVO: Botón para notificaciones móviles
+            ft.Container(
+                content=ft.Text("🔔", size=16),
+                on_click=self.go_to_mobile_notification_settings,
+                bgcolor="#FFFFFF20",
+                border_radius=8,
+                padding=ft.padding.all(8),
+                tooltip="Notificaciones"
             )
         ], spacing=8)
 
@@ -903,7 +912,7 @@ class InteractiveMomentsScreen:
             self.refresh_summary()
 
     # ===============================
-    # NAVEGACIÓN Y MENSAJES
+    # NAVEGACIÓN Y MENSAJES - CON NOTIFICACIONES MÓVILES
     # ===============================
     def go_to_calendar(self, e=None):
         """Ir al calendario"""
@@ -914,6 +923,14 @@ class InteractiveMomentsScreen:
         """Ir al selector de temas"""
         if self.page:
             self.page.go("/theme_selector")
+
+    # ✅ NUEVO: Método para ir a configuración de notificaciones móviles
+    def go_to_mobile_notification_settings(self, e=None):
+        """Ir a configuración de notificaciones móviles"""
+        if self.page:
+            self.page.go("/mobile_notification_settings")
+        else:
+            print("⚠️ Página no disponible para navegar a notificaciones móviles")
 
     def go_back(self, e=None):
         """Volver"""
