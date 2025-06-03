@@ -1,3 +1,10 @@
+"""
+📅 Calendar Screen CORREGIDA - ReflectApp
+✅ ARREGLADO: Navegación correcta entre días
+✅ ARREGLADO: Datos específicos por día
+✅ ARREGLADO: Paso correcto de parámetros entre pantallas
+"""
+
 import flet as ft
 from datetime import datetime, date, timedelta
 import calendar
@@ -25,10 +32,10 @@ class CalendarScreen:
         # UI Components
         self.page = None
         self.main_container = None
-        self.theme = get_theme()  # NUEVO: Tema actual
+        self.theme = get_theme()
 
     def update_theme(self):
-        """Actualizar tema - NUEVO MÉTODO"""
+        """Actualizar tema"""
         self.theme = get_theme()
         print(f"🎨 Calendar: Tema actualizado a {self.theme.display_name}")
 
@@ -140,23 +147,23 @@ class CalendarScreen:
 
     def calculate_month_color(self, month_data):
         if month_data["total"] == 0:
-            return self.theme.surface_variant  # CAMBIADO: Usar tema
+            return self.theme.surface_variant
 
         if month_data["positive"] > month_data["negative"]:
             return self.theme.positive_main
         elif month_data["negative"] > month_data["positive"]:
             return self.theme.negative_main
         else:
-            return self.theme.surface_variant  # CAMBIADO: Usar tema
+            return self.theme.surface_variant
 
     def calculate_day_color(self, day_data, year, month, day):
         # Día futuro = surface
         if self.is_future_day(year, month, day):
-            return self.theme.surface  # CAMBIADO: Usar tema
+            return self.theme.surface
 
         # Día actual sin submitear = accent secundario
         if self.is_current_day(year, month, day) and not day_data.get("submitted", False):
-            return self.theme.accent_secondary  # CAMBIADO: Usar tema
+            return self.theme.accent_secondary
 
         # Día con datos = color según balance
         if day_data.get("submitted", False):
@@ -165,51 +172,51 @@ class CalendarScreen:
             elif day_data["negative"] > day_data["positive"]:
                 return self.theme.negative_main
             else:
-                return self.theme.surface_variant  # CAMBIADO: Usar tema
+                return self.theme.surface_variant
 
         # Sin datos = surface variant
-        return self.theme.surface_variant  # CAMBIADO: Usar tema
+        return self.theme.surface_variant
 
     # ====== UI METHODS ACTUALIZADOS CON TEMAS ======
 
     def build(self):
-        """Construir vista principal - PADDING OPTIMIZADO"""
+        """Construir vista principal"""
         self.update_theme()
 
-    # Cargar datos iniciales del año
+        # Cargar datos iniciales del año
         self.months_data = self.load_year_data(self.selected_year)
 
-    # Header con tema
+        # Header con tema
         back_button = ft.TextButton(
-        "← Volver",
+            "← Volver",
             on_click=self.go_back,
             style=ft.ButtonStyle(color="#FFFFFF")
-    )
+        )
 
         header = create_gradient_header(
             title="📅 Calendario Zen",
             left_button=back_button,
             theme=self.theme
-    )
+        )
 
-    # Contenedor principal con PADDING REDUCIDO
+        # Contenedor principal con PADDING REDUCIDO
         self.main_container = ft.Container(
-        content=self.build_months_view(),
-        expand=True,
-        padding=ft.padding.all(12)  # ✅ Era 20 → 12 (más compacto)
-    )
+            content=self.build_months_view(),
+            expand=True,
+            padding=ft.padding.all(12)
+        )
 
-    # Vista completa
+        # Vista completa
         view = ft.View(
-        "/calendar",
-        [
-            header,
-            self.main_container
-        ],
-        bgcolor=self.theme.primary_bg,
-        padding=0,
-        spacing=0
-    )
+            "/calendar",
+            [
+                header,
+                self.main_container
+            ],
+            bgcolor=self.theme.primary_bg,
+            padding=0,
+            spacing=0
+        )
 
         return view
 
@@ -231,7 +238,7 @@ class CalendarScreen:
                     str(self.selected_year),
                     size=28,
                     weight=ft.FontWeight.BOLD,
-                    color=self.theme.text_primary,  # CAMBIADO: Usar tema
+                    color=self.theme.text_primary,
                     expand=True,
                     text_align=ft.TextAlign.CENTER
                 ),
@@ -314,46 +321,45 @@ class CalendarScreen:
             text_color = "#FFFFFF" if month_color in [self.theme.positive_main, self.theme.negative_main] else self.theme.text_primary
 
         return ft.Container(
-        content=ft.Column(
-            [
-                ft.Text(
-                    month_name[:3].upper(),
-                    size=14,
-                    weight=ft.FontWeight.BOLD,
-                    color=text_color,
-                    text_align=ft.TextAlign.CENTER
-                ),
-                ft.Text(
-                    f"{month_data['total']}",
-                    size=18,
-                    weight=ft.FontWeight.W_600,
-                    color=text_color,
-                    text_align=ft.TextAlign.CENTER
-                ),
-                ft.Text(
-                    f"+{month_data['positive']} -{month_data['negative']}",
-                    size=10,
-                    color=text_color,
-                    text_align=ft.TextAlign.CENTER
-                )
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=4
-        ),
-        width=100,
-        height=80,
-        bgcolor=bg_color,
-        border_radius=12,
-        padding=ft.padding.all(8),
-        on_click=lambda e, m=month_num: self.select_month(m),
-        # ✅ SOMBRA CORREGIDA - ANTES ERA HARDCODED
-        shadow=ft.BoxShadow(
-            spread_radius=0,
-            blur_radius=4,
-            color=self.theme.shadow_color,  # ✅ AHORA USA EL TEMA
-            offset=ft.Offset(0, 2)
+            content=ft.Column(
+                [
+                    ft.Text(
+                        month_name[:3].upper(),
+                        size=14,
+                        weight=ft.FontWeight.BOLD,
+                        color=text_color,
+                        text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        f"{month_data['total']}",
+                        size=18,
+                        weight=ft.FontWeight.W_600,
+                        color=text_color,
+                        text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        f"+{month_data['positive']} -{month_data['negative']}",
+                        size=10,
+                        color=text_color,
+                        text_align=ft.TextAlign.CENTER
+                    )
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4
+            ),
+            width=100,
+            height=80,
+            bgcolor=bg_color,
+            border_radius=12,
+            padding=ft.padding.all(8),
+            on_click=lambda e, m=month_num: self.select_month(m),
+            shadow=ft.BoxShadow(
+                spread_radius=0,
+                blur_radius=4,
+                color=self.theme.shadow_color,
+                offset=ft.Offset(0, 2)
+            )
         )
-    )
 
     def build_days_view(self):
         """Construir vista de días del mes seleccionado CON TEMAS"""
@@ -375,7 +381,7 @@ class CalendarScreen:
                     f"{month_name} {self.selected_year}",
                     size=24,
                     weight=ft.FontWeight.BOLD,
-                    color=self.theme.text_primary,  # CAMBIADO: Usar tema
+                    color=self.theme.text_primary,
                     expand=True,
                     text_align=ft.TextAlign.CENTER
                 ),
@@ -460,7 +466,7 @@ class CalendarScreen:
         else:
             text_color = self.theme.text_primary
 
-        # Callback de click
+        # Callback de click - ✅ CORREGIDO: Pasar datos específicos del día
         on_click_handler = None
         if not is_future:
             if is_current:
@@ -493,49 +499,47 @@ class CalendarScreen:
     def build_legend(self):
         """Construir leyenda con padding y tamaños OPTIMIZADOS"""
         return create_themed_container(
-        content=ft.Column(
-            [
-                ft.Text(
-                    "Leyenda:",
-                    size=12,  # ✅ Era 14 → 12 (más compacto)
-                    weight=ft.FontWeight.W_500,
-                    color=self.theme.text_primary
-                ),
-                ft.Container(height=6),  # ✅ Era 8 → 6
-                ft.Row(
-                    [
-                        self.create_legend_item(self.theme.positive_main, "Positivos"),
-                        self.create_legend_item(self.theme.negative_main, "Negativos"),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER
-                ),
-                ft.Container(height=6),  # ✅ Era 8 → 6
-                ft.Row(
-                    [
-                        self.create_legend_item(self.theme.accent_secondary, "Hoy"),
-                        self.create_legend_item(self.theme.surface, "Futuros"),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER
-                )
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        ),
-        theme=self.theme,
-        border_radius=12
-    )
+            content=ft.Column(
+                [
+                    ft.Text(
+                        "Leyenda:",
+                        size=12,
+                        weight=ft.FontWeight.W_500,
+                        color=self.theme.text_primary
+                    ),
+                    ft.Container(height=6),
+                    ft.Row(
+                        [
+                            self.create_legend_item(self.theme.positive_main, "Positivos"),
+                            self.create_legend_item(self.theme.negative_main, "Negativos"),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER
+                    ),
+                    ft.Container(height=6),
+                    ft.Row(
+                        [
+                            self.create_legend_item(self.theme.accent_secondary, "Hoy"),
+                            self.create_legend_item(self.theme.surface, "Futuros"),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER
+                    )
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            ),
+            theme=self.theme,
+            border_radius=12
+        )
 
     def create_legend_item(self, color, label):
         """Crear item de leyenda MÁS COMPACTO"""
         return ft.Row(
-        [
-            ft.Container(width=12, height=12, bgcolor=color, border_radius=3),  # ✅ Era 16x16 → 12x12
-            ft.Container(width=6),  # ✅ Era 8 → 6
-            ft.Text(label, size=10, color=self.theme.text_secondary)  # ✅ Era 12 → 10
-        ],
-        spacing=0
-    )
-
-
+            [
+                ft.Container(width=12, height=12, bgcolor=color, border_radius=3),
+                ft.Container(width=6),
+                ft.Text(label, size=10, color=self.theme.text_secondary)
+            ],
+            spacing=0
+        )
 
     def change_year(self, direction):
         """Cambiar año (+1 o -1)"""
@@ -579,10 +583,14 @@ class CalendarScreen:
             self.on_go_to_entry()
 
     def view_past_day(self, day):
-        """Ver detalles de un día pasado"""
-        print(f"Ver día pasado: {self.selected_year}-{self.selected_month}-{day}")
+        """✅ CORREGIDO: Ver detalles de un día pasado con datos específicos"""
+        print(f"🔍 Ver día pasado: {self.selected_year}-{self.selected_month}-{day}")
+
         if self.on_view_day:
+            # ✅ IMPORTANTE: Obtener datos específicos del día seleccionado
             day_details = self.get_day_details(self.selected_year, self.selected_month, day)
+
+            # ✅ IMPORTANTE: Pasar la fecha específica junto con los detalles
             self.on_view_day(self.selected_year, self.selected_month, day, day_details)
 
     def go_back(self, e):
@@ -622,5 +630,3 @@ class CalendarScreen:
             print(f"❌ Error verificando submisión de hoy: {e}")
 
         print("🧪 TESTING - Pruebas completadas")
-
-# ====== EJEMPLO DE USO ======

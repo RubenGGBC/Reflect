@@ -1,6 +1,8 @@
 """
-🌙 ReflectApp - MAIN.PY CORREGIDO SIN IA
-Todas las rutas funcionando correctamente SIN referencias a IA
+🌙 ReflectApp - MAIN.PY COMPLETAMENTE CORREGIDO
+✅ ARREGLADO: Navegación correcta entre días del calendario
+✅ ARREGLADO: Paso de datos específicos entre pantallas
+✅ ARREGLADO: DailyReviewScreen recibe fecha y datos correctos
 """
 
 import flet as ft
@@ -9,7 +11,7 @@ from screens.register_screen import RegisterScreen
 from screens.InteractiveMoments_screen import InteractiveMomentsScreen
 from screens.new_tag_screen import NewTagScreen
 from screens.calendar_screen import CalendarScreen
-from screens.day_details_screen import ModernDailyReviewScreen  # ✅ Cambiado al moderno
+from screens.day_details_screen import DailyReviewScreen
 from screens.theme_selector_screen import ThemeSelectorScreen
 
 # ✅ IMPORTACIONES MÓVILES PARA NOTIFICACIONES
@@ -29,7 +31,7 @@ from services.reflect_themes_system import (
 
 
 class ReflectApp:
-    """Aplicación ReflectApp CORREGIDA SIN IA"""
+    """Aplicación ReflectApp CON NAVEGACIÓN ENTRE DÍAS CORREGIDA"""
 
     def __init__(self):
         self.current_user = None
@@ -41,24 +43,27 @@ class ReflectApp:
         self.interactive_screen = None
         self.new_tag_screen = None
         self.calendar_screen = None
-        self.daily_review_screen = None  # ✅ Cambiar nombre
+        self.day_details_screen = None
         self.theme_selector_screen = None
         self.mobile_notification_settings_screen = None
 
-        # Estado
+        # ✅ NUEVO: Estado para navegación entre días
         self.current_day_details = None
+        self.selected_date = None  # (year, month, day)
+        self.day_data = None       # Datos específicos del día
+
         self.page = None
 
         # Sistema de notificaciones móvil
         self.mobile_notification_service = None
         self.notifications_active = False
 
-        print("🚀 ReflectApp inicializada SIN IA - CORREGIDA")
+        print("🚀 ReflectApp inicializada CON NAVEGACIÓN ENTRE DÍAS CORREGIDA")
 
     def main(self, page: ft.Page):
         """Inicializar aplicación principal"""
         self.page = page
-        print("🚀 === MAIN APP INICIADA SIN IA ===")
+        print("🚀 === MAIN APP INICIADA ===")
 
         # Configuración de la página
         page.title = "ReflectApp - Tu espacio de reflexión"
@@ -139,11 +144,11 @@ class ReflectApp:
             )
 
     # ===============================
-    # ✅ MANEJO DE RUTAS CORREGIDO SIN IA
+    # ✅ MANEJO DE RUTAS CORREGIDO
     # ===============================
 
     def handle_route_change(self, route):
-        """Manejar cambios de ruta - CORREGIDO SIN IA"""
+        """✅ COMPLETAMENTE CORREGIDO: Manejar cambios de ruta con datos específicos"""
         print(f"🛣️ === NAVEGACIÓN A: {self.page.route} ===")
         self.page.views.clear()
 
@@ -173,10 +178,14 @@ class ReflectApp:
             print("📅 Navegando a CALENDAR")
             self.handle_calendar_route()
 
-        # ✅ RUTAS DE REVISIÓN DIARIA MODERNA
+        # ✅ RUTAS DE DETALLES DE DÍA - CORREGIDAS
+        elif self.page.route.startswith("/day_details"):
+            print("📊 Navegando a DAY_DETAILS")
+            self.handle_day_details_route()
+
         elif self.page.route == "/daily_review":
-            print("📝 Navegando a MODERN DAILY REVIEW")
-            self.handle_modern_daily_review_route()
+            print("📝 Navegando a DAILY_REVIEW")
+            self.handle_daily_review_route()
 
         # ✅ RUTA DE SELECTOR DE TEMAS
         elif self.page.route == "/theme_selector":
@@ -206,19 +215,19 @@ class ReflectApp:
             self.page.go("/login")
 
     # ===============================
-    # ✅ HANDLERS DE RUTAS ESPECÍFICAS CORREGIDOS
+    # ✅ HANDLERS DE RUTAS ESPECÍFICAS - CORREGIDOS
     # ===============================
 
     def handle_interactive_route(self):
-        """✅ CORREGIDO: Manejar ruta de InteractiveMoments sin IA"""
+        """Manejar ruta de InteractiveMoments"""
         if not self.current_user:
             print("❌ No hay usuario - redirigiendo a login")
             self.page.go("/login")
             return
 
         def on_moments_created(simple_tags):
-            """✅ CORREGIDO: Callback cuando se crean momentos SIN IA"""
-            print(f"💾 === GUARDANDO {len(simple_tags)} MOMENTOS SIN IA ===")
+            """Callback cuando se crean momentos"""
+            print(f"💾 === GUARDANDO {len(simple_tags)} MOMENTOS ===")
 
             try:
                 from services import db
@@ -240,18 +249,16 @@ class ReflectApp:
                     elif tag.category == "negative":
                         negative_tags.append(tag_dict)
 
-                # ✅ Guardar SIN IA
                 entry_id = db.save_daily_entry(
                     user_id=user_id,
                     free_reflection="Reflexión creada con Momentos Interactivos",
                     positive_tags=positive_tags,
                     negative_tags=negative_tags,
-                    worth_it=True,
-                    mood_score=7 if len(positive_tags) > len(negative_tags) else 5
+                    worth_it=True
                 )
 
                 if entry_id:
-                    print(f"✅ Momentos guardados SIN IA con ID: {entry_id}")
+                    print(f"✅ Momentos guardados con ID: {entry_id}")
 
                     # Notificación de éxito
                     if self.mobile_notification_service:
@@ -312,7 +319,7 @@ class ReflectApp:
         self.page.views.append(view)
 
     def handle_calendar_route(self):
-        """Manejar ruta del calendario - CORREGIDA"""
+        """✅ CORREGIDO: Manejar ruta del calendario con callbacks correctos"""
         print("📅 === HANDLE CALENDAR ROUTE ===")
 
         if not self.current_user:
@@ -322,23 +329,32 @@ class ReflectApp:
 
         def on_go_to_entry():
             """Ir a entry"""
+            print("🎮 Navegando a entry desde calendario")
+            # ✅ Limpiar datos de día específico al ir a entry
+            self.selected_date = None
+            self.day_data = None
             self.page.go("/entry")
 
         def on_view_day(year, month, day, details):
-            """Ver detalles de un día específico"""
-            print(f"📊 Ver día: {year}-{month}-{day}")
-            self.current_day_details = {
-                "year": year,
-                "month": month,
-                "day": day,
-                "details": details
-            }
+            """✅ CORREGIDO: Ver detalles de un día específico con datos"""
+            print(f"📊 === NAVEGANDO A DÍA ESPECÍFICO ===")
+            print(f"📅 Fecha: {year}-{month}-{day}")
+            print(f"📋 Detalles: {details}")
+
+            # ✅ IMPORTANTE: Guardar datos del día seleccionado
+            self.selected_date = (year, month, day)
+            self.day_data = details
+
+            print(f"💾 Datos guardados - Fecha: {self.selected_date}")
+            print(f"💾 Reflexión: {details.get('reflection', 'N/A')[:50]}...")
+
+            # ✅ Navegar a daily_review con datos específicos
             self.page.go("/daily_review")
 
         self.calendar_screen = CalendarScreen(
             user_data=self.current_user,
             on_go_to_entry=on_go_to_entry,
-            on_view_day=on_view_day
+            on_view_day=on_view_day  # ✅ IMPORTANTE: Callback que recibe datos específicos
         )
 
         self.calendar_screen.page = self.page
@@ -349,9 +365,15 @@ class ReflectApp:
         self.apply_theme_to_view(view)
         self.page.views.append(view)
 
-    def handle_modern_daily_review_route(self):
-        """✅ NUEVO: Manejar ruta de revisión diaria moderna SIN IA"""
-        print("📝 === HANDLE MODERN DAILY REVIEW ROUTE ===")
+    def handle_day_details_route(self):
+        """Manejar ruta de detalles del día - REDIRIGIR A DAILY REVIEW"""
+        print("📊 === HANDLE DAY DETAILS ROUTE ===")
+        # Redirigir a la pantalla de revisión diaria moderna
+        self.page.go("/daily_review")
+
+    def handle_daily_review_route(self):
+        """✅ COMPLETAMENTE CORREGIDO: Manejar ruta de revisión diaria con datos específicos"""
+        print("📝 === HANDLE DAILY REVIEW ROUTE ===")
 
         if not self.current_user:
             print("❌ No hay usuario - redirigiendo a login")
@@ -360,19 +382,28 @@ class ReflectApp:
 
         def on_go_back():
             """Volver al calendario"""
+            print("🔙 Volviendo al calendario desde daily_review")
             self.page.go("/calendar")
 
-        # ✅ Usar la nueva pantalla moderna
-        self.daily_review_screen = ModernDailyReviewScreen(
+        # ✅ IMPORTANTE: Crear DailyReviewScreen con datos específicos del día
+        print(f"🔍 Creando DailyReviewScreen...")
+        print(f"📅 Fecha seleccionada: {self.selected_date}")
+        print(f"📋 Datos del día: {self.day_data}")
+
+        self.day_details_screen = DailyReviewScreen(
             app=self,
             user_data=self.current_user,
-            on_go_back=on_go_back
+            on_go_back=on_go_back,
+            target_date=self.selected_date,  # ✅ NUEVO: Pasar fecha específica
+            day_details=self.day_data        # ✅ NUEVO: Pasar datos específicos
         )
 
-        self.daily_review_screen.page = self.page
-        view = self.daily_review_screen.build()
+        self.day_details_screen.page = self.page
+        view = self.day_details_screen.build()
         self.apply_theme_to_view(view)
         self.page.views.append(view)
+
+        print(f"✅ DailyReviewScreen creada correctamente")
 
     def handle_theme_selector_route(self):
         """Manejar ruta del selector de temas - CORREGIDA"""
@@ -450,7 +481,7 @@ class ReflectApp:
 
     def navigate_to_entry(self, user_data):
         """Navegar a la pantalla de entrada"""
-        print(f"🧭 === NAVIGATE TO ENTRY SIN IA ===")
+        print(f"🧭 === NAVIGATE TO ENTRY ===")
         print(f"👤 Usuario: {user_data.get('name')} (ID: {user_data.get('id')})")
 
         self.current_user = user_data
@@ -462,7 +493,7 @@ class ReflectApp:
             print("🛣️ Navegando desde login a /entry")
             self.login_screen.page.go("/entry")
 
-        print(f"✅ === NAVIGATE TO ENTRY COMPLETADO SIN IA ===")
+        print(f"✅ === NAVIGATE TO ENTRY COMPLETADO ===")
 
     def navigate_to_login(self):
         """Navegar al login"""
@@ -479,6 +510,11 @@ class ReflectApp:
             )
 
         self.current_user = None
+
+        # ✅ Limpiar datos de navegación
+        self.selected_date = None
+        self.day_data = None
+
         if self.page:
             self.page.go("/login")
         print("✅ === NAVIGATE TO LOGIN COMPLETADO ===")
@@ -555,10 +591,10 @@ class ReflectApp:
 
 
 def create_improved_app():
-    """Crear aplicación SIN IA - TODAS LAS RUTAS CORREGIDAS"""
+    """Crear aplicación con navegación entre días corregida"""
 
     def main(page: ft.Page):
-        """Función principal de la aplicación SIN IA"""
+        """Función principal de la aplicación"""
         app = ReflectApp()
 
         # Configurar página base
@@ -570,31 +606,27 @@ def create_improved_app():
         apply_theme_to_page(page)
         app.main(page)
 
-        print("🌙 ReflectApp iniciada SIN IA - TODAS LAS RUTAS FUNCIONANDO")
+        print("🌙 ReflectApp iniciada CON NAVEGACIÓN ENTRE DÍAS FUNCIONANDO")
         print(f"🎨 Tema inicial: {get_theme().display_name}")
         print("🔔 Notificaciones móviles: ACTIVAS")
-        print("✅ Rutas corregidas SIN IA: /calendar, /theme_selector, /daily_review")
-        print("❌ IA COMPLETAMENTE REMOVIDA del sistema")
+        print("✅ CORRECCIONES APLICADAS:")
+        print("   📅 Calendario → Daily Review con datos específicos")
+        print("   🎮 InteractiveMoments → Más emojis, slider funcionando, lista de momentos")
+        print("   📊 Daily Review → Modo vista vs edición según fecha")
 
     return main
 
 
 if __name__ == "__main__":
-    print("🚀 === INICIANDO REFLECTAPP SIN IA - RUTAS CORREGIDAS ===")
-    print("📋 Rutas disponibles SIN IA:")
-    print("   🏠 /login - Pantalla de inicio de sesión")
-    print("   📝 /register - Registro de nuevos usuarios")
-    print("   🎮 /entry - Momentos interactivos principales (PERSISTENTES)")
-    print("   🏷️ /new_tag - Crear nuevos tags")
-    print("   📅 /calendar - Calendario con historial")
-    print("   📊 /daily_review - Revisión diaria moderna SIN IA")
-    print("   🎨 /theme_selector - Selector de temas")
-    print("   🔔 /mobile_notification_settings - Config notifSicaciones")
-    print("=" * 60)
-    print("❌ TODAS LAS REFERENCIAS A IA HAN SIDO REMOVIDAS")
-    print("✅ PERSISTENCIA DE MOMENTOS CORREGIDA")
-    print("✅ LAYOUT MÓVIL OPTIMIZADO Y CENTRADO")
-    print("=" * 60)
+    print("🚀 === INICIANDO REFLECTAPP COMPLETAMENTE CORREGIDA ===")
+    print("📋 CORRECCIONES IMPLEMENTADAS:")
+    print("   ✅ Calendario: Navegación correcta entre días")
+    print("   ✅ InteractiveMoments: Slider funciona, más emojis, lista de momentos")
+    print("   ✅ Daily Review: Muestra datos específicos del día seleccionado")
+    print("   ✅ Centrado perfecto de emojis y textos")
+    print("   ✅ Mejor aprovechamiento del espacio vertical")
+    print("   ✅ Persistencia corregida en base de datos")
+    print("=" * 70)
 
     # Crear y ejecutar aplicación
     app_main = create_improved_app()

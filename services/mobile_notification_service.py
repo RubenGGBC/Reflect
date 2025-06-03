@@ -1,6 +1,8 @@
 """
 📱 Sistema de Notificaciones Móvil CORREGIDO - ReflectApp Android
-Notificaciones push locales SIN dependencias externas (sin 'schedule')
+✅ ARREGLADO: Notificaciones que SÍ aparecen como pop-ups en móvil
+✅ ARREGLADO: Overlays y banners más visibles
+✅ ARREGLADO: Sistema de alertas nativas para móvil
 """
 
 import flet as ft
@@ -11,100 +13,16 @@ import json
 import os
 from datetime import datetime, timedelta, time as dt_time
 from typing import List, Dict, Optional, Callable
-
-class SimpleMobileScheduler:
-    """Programador simple que NO depende de librerías externas"""
-
-    def __init__(self):
-        self.jobs = []
-        self.is_running = False
-
-    def add_daily_job(self, time_str: str, function: Callable, enabled: bool = True):
-        """
-        Añadir trabajo diario
-
-        Args:
-            time_str: Hora en formato "HH:MM" (ej: "20:00")
-            function: Función a ejecutar
-            enabled: Si está activo o no
-        """
-        if enabled:
-            self.jobs.append({
-                'time': time_str,
-                'function': function,
-                'type': 'daily',
-                'last_run': None
-            })
-            print(f"📅 Job programado: {time_str} - {function.__name__}")
-
-    def add_periodic_job(self, hours: int, function: Callable, enabled: bool = True):
-        """
-        Añadir trabajo periódico (cada X horas)
-
-        Args:
-            hours: Cada cuántas horas ejecutar
-            function: Función a ejecutar
-            enabled: Si está activo o no
-        """
-        if enabled:
-            self.jobs.append({
-                'hours': hours,
-                'function': function,
-                'type': 'periodic',
-                'last_run': None
-            })
-            print(f"⏰ Job periódico: cada {hours}h - {function.__name__}")
-
-    def check_and_run_jobs(self):
-        """Verificar y ejecutar trabajos pendientes"""
-        now = datetime.now()
-
-        for job in self.jobs:
-            try:
-                should_run = False
-
-                if job['type'] == 'daily':
-                    # Verificar trabajos diarios
-                    target_time = datetime.strptime(job['time'], "%H:%M").time()
-                    current_time = now.time()
-
-                    # Si es la hora correcta Y no se ejecutó hoy
-                    if (current_time.hour == target_time.hour and
-                            current_time.minute == target_time.minute and
-                            (job['last_run'] is None or
-                             job['last_run'].date() != now.date())):
-                        should_run = True
-
-                elif job['type'] == 'periodic':
-                    # Verificar trabajos periódicos
-                    if (job['last_run'] is None or
-                            (now - job['last_run']).total_seconds() >= job['hours'] * 3600):
-                        should_run = True
-
-                if should_run:
-                    print(f"🚀 Ejecutando job: {job['function'].__name__}")
-                    job['function']()
-                    job['last_run'] = now
-
-            except Exception as e:
-                print(f"❌ Error ejecutando job: {e}")
-
-    def clear_jobs(self):
-        """Limpiar todos los trabajos"""
-        self.jobs.clear()
-        print("🗑️ Trabajos limpiados")
+import schedule
 
 class MobileNotificationService:
-    """Servicio de notificaciones CORREGIDO para móviles"""
+    """Servicio de notificaciones CORREGIDO para dispositivos móviles Android/iOS"""
 
     def __init__(self, page: ft.Page = None, db_service=None):
         self.page = page
         self.db_service = db_service
         self.is_running = False
         self.scheduler_thread = None
-
-        # ✅ NUEVO: Usar nuestro programador simple
-        self.scheduler = SimpleMobileScheduler()
 
         # Configuración por defecto
         self.settings = {
@@ -123,7 +41,11 @@ class MobileNotificationService:
         self.notification_queue = []
         self.notification_history = []
 
-        print("📱 MobileNotificationService CORREGIDO inicializado")
+        # ✅ NUEVO: Sistema de overlays para móvil
+        self.active_overlays = []
+        self.notification_counter = 0
+
+        print("📱 MobileNotificationService CORREGIDO inicializado para móvil")
 
     def initialize_mobile_notifications(self, page: ft.Page):
         """Inicializar notificaciones móviles con la página de Flet"""
@@ -133,40 +55,56 @@ class MobileNotificationService:
         if hasattr(page, 'platform'):
             print(f"📱 Plataforma detectada: {page.platform}")
 
+        # ✅ NUEVO: Configurar overlays para notificaciones móviles
+        self._setup_mobile_overlay_system()
+
         # Solicitar permisos de notificación (en móvil real)
         self.request_notification_permissions()
 
-        print("✅ Notificaciones móviles inicializadas")
+        print("✅ Notificaciones móviles CORREGIDAS inicializadas")
+
+    def _setup_mobile_overlay_system(self):
+        """✅ NUEVO: Configurar sistema de overlays para móvil"""
+        try:
+            # Limpiar overlays existentes
+            self.page.overlay.clear()
+            print("📱 Sistema de overlays móvil configurado")
+        except Exception as e:
+            print(f"⚠️ Error configurando overlays: {e}")
 
     def request_notification_permissions(self):
         """Solicitar permisos de notificación al usuario"""
         try:
             # En Flet móvil, esto se maneja automáticamente
-            print("🔐 Permisos de notificación concedidos")
+            # Pero podemos mostrar un diálogo explicativo
+            print("🔐 Solicitando permisos de notificación...")
+
+            # TODO: En producción, aquí iría la solicitud real de permisos
+            # Para desarrollo, asumimos que están concedidos
+
             return True
         except Exception as e:
             print(f"⚠️ Error solicitando permisos: {e}")
             return False
 
     def start_notification_scheduler(self):
-        """Iniciar programador de notificaciones SIN librería 'schedule'"""
+        """Iniciar programador de notificaciones en background para móvil"""
         if self.is_running:
             print("⚠️ Scheduler ya está ejecutándose")
             return
 
         self.is_running = True
 
-        # ✅ CORREGIDO: Configurar horarios SIN schedule
-        self._setup_mobile_notifications()
+        # Configurar horarios de notificaciones
+        self._schedule_mobile_notifications()
 
-        # Ejecutar en hilo separado
+        # Ejecutar en hilo separado (compatible con móvil)
         def run_mobile_scheduler():
-            print("🔄 Iniciando scheduler móvil CORREGIDO...")
+            print("🔄 Iniciando scheduler móvil...")
             while self.is_running:
                 try:
-                    # ✅ Usar nuestro scheduler simple
-                    self.scheduler.check_and_run_jobs()
-                    time.sleep(60)  # Revisar cada minuto
+                    schedule.run_pending()
+                    time.sleep(30)  # Revisar cada 30 segundos (más eficiente en móvil)
                 except Exception as e:
                     print(f"❌ Error en scheduler móvil: {e}")
                     time.sleep(60)
@@ -174,42 +112,38 @@ class MobileNotificationService:
         self.scheduler_thread = threading.Thread(target=run_mobile_scheduler, daemon=True)
         self.scheduler_thread.start()
 
-        print("✅ Scheduler móvil CORREGIDO iniciado")
+        print("✅ Scheduler móvil iniciado")
 
     def stop_notification_scheduler(self):
         """Detener programador de notificaciones"""
         self.is_running = False
-        self.scheduler.clear_jobs()
+        schedule.clear()
         print("🛑 Scheduler móvil detenido")
 
-    def _setup_mobile_notifications(self):
-        """✅ CORREGIDO: Configurar horarios SIN librería schedule"""
+    def _schedule_mobile_notifications(self):
+        """Configurar horarios específicos para móvil"""
 
         # 🌅 Motivación matutina
         morning_time = self.settings.get("morning_motivation_time", "09:00")
-        morning_enabled = self.settings.get("morning_motivation_enabled", True)
-        self.scheduler.add_daily_job(morning_time, self._send_morning_notification, morning_enabled)
+        schedule.every().day.at(morning_time).do(self._send_morning_notification)
 
         # 📝 Recordatorio de reflexión
         daily_time = self.settings.get("daily_reminder_time", "20:00")
-        daily_enabled = self.settings.get("daily_reminder_enabled", True)
-        self.scheduler.add_daily_job(daily_time, self._send_daily_reminder_notification, daily_enabled)
+        schedule.every().day.at(daily_time).do(self._send_daily_reminder_notification)
 
         # 🌙 Buenas noches
         goodnight_time = self.settings.get("goodnight_time", "22:30")
-        goodnight_enabled = self.settings.get("goodnight_enabled", True)
-        self.scheduler.add_daily_job(goodnight_time, self._send_goodnight_notification, goodnight_enabled)
+        schedule.every().day.at(goodnight_time).do(self._send_goodnight_notification)
 
-        # 💚 Verificación de bienestar (cada 72 horas)
-        wellbeing_enabled = self.settings.get("wellbeing_checks_enabled", True)
-        self.scheduler.add_periodic_job(72, self._send_wellbeing_notification, wellbeing_enabled)
+        # 💚 Verificación de bienestar (cada 3 días)
+        schedule.every(3).days.at("14:00").do(self._send_wellbeing_notification)
 
-        print("📅 Horarios móviles configurados SIN schedule")
+        print("📅 Horarios móviles configurados")
 
     def send_mobile_notification(self, title: str, message: str, icon: str = "🧘‍♀️",
                                  action_route: str = None, priority: str = "normal"):
         """
-        Enviar notificación móvil usando las capacidades de Flet
+        ✅ COMPLETAMENTE CORREGIDO: Enviar notificación móvil que SÍ aparece como pop-up
 
         Args:
             title: Título de la notificación
@@ -230,67 +164,110 @@ class MobileNotificationService:
         }
 
         try:
-            # MÉTODO 1: Notificación nativa si está disponible
-            if self.page and hasattr(self.page, 'show_notification'):
-                self.page.show_notification(
-                    title=notification_data["title"],
-                    message=message,
-                    action=action_route
-                )
-
-            # MÉTODO 2: SnackBar como fallback (siempre visible)
-            elif self.page:
-                self._show_snackbar_notification(notification_data)
-
-            # MÉTODO 3: Guardar en cola para mostrar cuando se abra la app
+            # ✅ MÉTODO CORREGIDO: Mostrar como pop-up móvil inmediatamente
+            if self.page:
+                self._show_mobile_popup_notification(notification_data)
             else:
+                # Guardar en cola para mostrar cuando se abra la app
                 self.notification_queue.append(notification_data)
 
             # Guardar en historial
             self.notification_history.append(notification_data)
             self._save_notification_history()
 
-            print(f"📤 Notificación móvil enviada: {title}")
+            print(f"📤 Notificación móvil CORREGIDA enviada: {title}")
 
         except Exception as e:
             print(f"❌ Error enviando notificación móvil: {e}")
             # Fallback: guardar en cola
             self.notification_queue.append(notification_data)
 
-    def _show_snackbar_notification(self, notification_data: Dict):
-        """Mostrar notificación como SnackBar elegante"""
+    def _show_mobile_popup_notification(self, notification_data: Dict):
+        """✅ NUEVO: Mostrar notificación como pop-up REAL en móvil"""
         if not self.page:
             return
 
-        def handle_notification_tap(e):
-            """Manejar tap en la notificación"""
+        self.notification_counter += 1
+        notification_id = f"mobile_notification_{self.notification_counter}"
+
+        # ✅ MÉTODO 1: AlertDialog para notificaciones importantes
+        if notification_data["priority"] in ["high", "critical"]:
+            self._show_alert_dialog_notification(notification_data)
+
+        # ✅ MÉTODO 2: Banner flotante para notificaciones normales
+        else:
+            self._show_floating_banner_notification(notification_data)
+
+    def _show_alert_dialog_notification(self, notification_data: Dict):
+        """✅ NUEVO: Mostrar como AlertDialog (pop-up real)"""
+        def handle_action(e):
+            """Manejar acción de la notificación"""
             if notification_data.get("action_route"):
                 self.page.go(notification_data["action_route"])
             self._mark_notification_as_read(notification_data["id"])
+            dialog.open = False
+            self.page.update()
 
-        # SnackBar elegante con acción
-        snackbar_content = ft.Row([
-            ft.Column([
+        def close_dialog(e):
+            """Cerrar diálogo"""
+            self._mark_notification_as_read(notification_data["id"])
+            dialog.open = False
+            self.page.update()
+
+        # Crear AlertDialog
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Text("🔔", size=20),
+                ft.Container(width=8),
                 ft.Text(
                     notification_data["title"],
-                    size=14,
+                    size=16,
                     weight=ft.FontWeight.BOLD,
-                    color="#FFFFFF"
-                ),
-                ft.Text(
-                    notification_data["message"],
-                    size=12,
-                    color="#FFFFFF90"
+                    expand=True
                 )
-            ], expand=True, spacing=4),
+            ]),
+            content=ft.Container(
+                content=ft.Text(
+                    notification_data["message"],
+                    size=14
+                ),
+                padding=ft.padding.all(16)
+            ),
+            actions=[
+                ft.TextButton("Cerrar", on_click=close_dialog),
+                ft.ElevatedButton(
+                    "Abrir",
+                    on_click=handle_action,
+                    style=ft.ButtonStyle(
+                        bgcolor="#2196F3",
+                        color="#FFFFFF"
+                    )
+                ) if notification_data.get("action_route") else None
+            ],
+            actions_alignment=ft.MainAxisAlignment.END
+        )
 
-            ft.IconButton(
-                icon=ft.icons.OPEN_IN_NEW,
-                icon_color="#FFFFFF",
-                on_click=handle_notification_tap,
-                tooltip="Abrir"
-            ) if notification_data.get("action_route") else ft.Container()
-        ], alignment=ft.CrossAxisAlignment.CENTER)
+        # Mostrar diálogo
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+        print(f"📱 AlertDialog mostrado: {notification_data['title']}")
+
+    def _show_floating_banner_notification(self, notification_data: Dict):
+        """✅ NUEVO: Mostrar como banner flotante (overlay)"""
+        def handle_tap(e):
+            """Manejar tap en el banner"""
+            if notification_data.get("action_route"):
+                self.page.go(notification_data["action_route"])
+            self._mark_notification_as_read(notification_data["id"])
+            self._close_banner(banner)
+
+        def close_banner(e):
+            """Cerrar banner"""
+            self._mark_notification_as_read(notification_data["id"])
+            self._close_banner(banner)
 
         # Determinar color según prioridad
         bg_color = "#2196F3"  # Azul por defecto
@@ -299,18 +276,95 @@ class MobileNotificationService:
         elif notification_data["priority"] == "low":
             bg_color = "#607D8B"  # Gris
 
-        snackbar = ft.SnackBar(
-            content=snackbar_content,
+        # ✅ Banner flotante elegante
+        banner = ft.Container(
+            content=ft.Row([
+                # Icono
+                ft.Container(
+                    content=ft.Text("🔔", size=20),
+                    width=40,
+                    height=40,
+                    bgcolor="#FFFFFF30",
+                    border_radius=20,
+                    alignment=ft.alignment.center
+                ),
+
+                # Contenido
+                ft.Column([
+                    ft.Text(
+                        notification_data["title"],
+                        size=14,
+                        weight=ft.FontWeight.BOLD,
+                        color="#FFFFFF",
+                        max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS
+                    ),
+                    ft.Text(
+                        notification_data["message"],
+                        size=12,
+                        color="#FFFFFF90",
+                        max_lines=2,
+                        overflow=ft.TextOverflow.ELLIPSIS
+                    )
+                ], expand=True, spacing=2),
+
+                # Botón cerrar
+                ft.IconButton(
+                    icon=ft.icons.CLOSE,
+                    icon_color="#FFFFFF",
+                    icon_size=16,
+                    on_click=close_banner,
+                    tooltip="Cerrar"
+                )
+            ], alignment=ft.CrossAxisAlignment.CENTER, spacing=12),
+
+            # Estilo del banner
+            width=350,
+            padding=ft.padding.all(16),
+            margin=ft.margin.only(top=60, left=20, right=20),  # ✅ Margen superior para evitar status bar
             bgcolor=bg_color,
-            duration=5000,  # 5 segundos
-            action="Ver",
-            action_color="#FFFFFF",
-            on_action=handle_notification_tap if notification_data.get("action_route") else None
+            border_radius=12,
+            shadow=ft.BoxShadow(
+                spread_radius=0,
+                blur_radius=10,
+                color="#00000040",
+                offset=ft.Offset(0, 4)
+            ),
+            on_click=handle_tap,
+            animate_opacity=300,
+            animate_position=300
         )
 
-        self.page.overlay.append(snackbar)
-        snackbar.open = True
+        # Añadir al overlay
+        self.page.overlay.append(banner)
+        self.active_overlays.append(banner)
         self.page.update()
+
+        # ✅ Auto-cerrar después de 5 segundos
+        def auto_close():
+            time.sleep(5)
+            try:
+                self._close_banner(banner)
+            except:
+                pass
+
+        threading.Thread(target=auto_close, daemon=True).start()
+
+        print(f"📱 Banner flotante mostrado: {notification_data['title']}")
+
+    def _close_banner(self, banner):
+        """✅ NUEVO: Cerrar banner específico"""
+        try:
+            if banner in self.page.overlay:
+                self.page.overlay.remove(banner)
+
+            if banner in self.active_overlays:
+                self.active_overlays.remove(banner)
+
+            self.page.update()
+            print("📱 Banner cerrado")
+        except Exception as e:
+            print(f"⚠️ Error cerrando banner: {e}")
 
     def show_pending_notifications(self):
         """Mostrar notificaciones pendientes cuando se abre la app"""
@@ -320,7 +374,7 @@ class MobileNotificationService:
         print(f"📬 Mostrando {len(self.notification_queue)} notificaciones pendientes")
 
         for notification in self.notification_queue[:3]:  # Máximo 3 a la vez
-            self._show_snackbar_notification(notification)
+            self._show_mobile_popup_notification(notification)
             time.sleep(1)  # Espaciar las notificaciones
 
         # Limpiar cola
@@ -366,6 +420,9 @@ class MobileNotificationService:
 
     def _send_morning_notification(self):
         """Notificación motivacional matutina para móvil"""
+        if not self.settings.get("morning_motivation_enabled", True):
+            return
+
         messages = [
             "¡Buenos días! 🌅 Un nuevo día lleno de posibilidades",
             "✨ Cada mañana es una oportunidad de comenzar de nuevo",
@@ -387,6 +444,9 @@ class MobileNotificationService:
 
     def _send_daily_reminder_notification(self):
         """Recordatorio diario para hacer reflexión"""
+        if not self.settings.get("daily_reminder_enabled", True):
+            return
+
         # Verificar si ya reflexionó hoy
         if self._user_already_reflected_today():
             self.send_mobile_notification(
@@ -420,6 +480,9 @@ class MobileNotificationService:
 
     def _send_goodnight_notification(self):
         """Mensaje de buenas noches"""
+        if not self.settings.get("goodnight_enabled", True):
+            return
+
         messages = [
             "🌙 Que tengas una noche reparadora y sueños tranquilos",
             "💤 Descansa bien. Mañana será un nuevo día",
@@ -440,6 +503,9 @@ class MobileNotificationService:
 
     def _send_wellbeing_notification(self):
         """Verificación de bienestar"""
+        if not self.settings.get("wellbeing_checks_enabled", True):
+            return
+
         messages = [
             "💚 ¿Cómo ha sido tu bienestar emocional últimamente?",
             "🤗 Recuerda: está bien no estar bien todos los días",
@@ -525,10 +591,10 @@ class MobileNotificationService:
         """Actualizar configuración de notificaciones"""
         self.settings.update(new_settings)
 
-        # ✅ CORREGIDO: Reconfigurar horarios si el scheduler está activo
+        # Reconfigurar horarios si el scheduler está activo
         if self.is_running:
-            self.scheduler.clear_jobs()
-            self._setup_mobile_notifications()
+            schedule.clear()
+            self._schedule_mobile_notifications()
 
         print(f"⚙️ Configuración móvil actualizada: {new_settings}")
 
@@ -547,14 +613,42 @@ class MobileNotificationService:
         print("🗑️ Historial de notificaciones limpiado")
 
     def test_notification(self):
-        """Enviar notificación de prueba"""
+        """✅ NUEVO: Enviar notificación de prueba que SÍ aparece"""
+        # Enviar 3 tipos de notificaciones para probar todos los métodos
+
+        # 1. Notificación de alta prioridad (AlertDialog)
         self.send_mobile_notification(
-            title="Prueba ReflectApp",
-            message="🧪 ¡El sistema de notificaciones móvil funciona perfectamente!",
+            title="Prueba de Alta Prioridad",
+            message="🚨 Esta es una notificación importante que aparece como pop-up",
             icon="🔔",
             action_route="/entry",
-            priority="normal"
+            priority="high"
         )
+
+        # 2. Notificación normal (Banner flotante) - después de 2 segundos
+        def send_normal_notification():
+            time.sleep(2)
+            self.send_mobile_notification(
+                title="Prueba Normal",
+                message="📱 Esta es una notificación normal que aparece como banner flotante",
+                icon="🧪",
+                action_route="/calendar",
+                priority="normal"
+            )
+
+        threading.Thread(target=send_normal_notification, daemon=True).start()
+
+        # 3. Notificación de baja prioridad - después de 4 segundos
+        def send_low_notification():
+            time.sleep(4)
+            self.send_mobile_notification(
+                title="Prueba Completa",
+                message="✅ ¡Todas las notificaciones funcionan correctamente!",
+                icon="🎉",
+                priority="low"
+            )
+
+        threading.Thread(target=send_low_notification, daemon=True).start()
 
 
 # ===============================
@@ -564,7 +658,7 @@ class MobileNotificationService:
 mobile_notification_service = None
 
 def initialize_mobile_notifications(page: ft.Page, db_service=None):
-    """Inicializar servicio de notificaciones móvil"""
+    """Inicializar servicio de notificaciones móvil CORREGIDO"""
     global mobile_notification_service
 
     mobile_notification_service = MobileNotificationService(page, db_service)
@@ -597,13 +691,13 @@ def stop_mobile_notifications():
         service.stop_notification_scheduler()
 
 def send_mobile_notification(title: str, message: str, icon: str = "🔔", route: str = None):
-    """Enviar notificación móvil rápida"""
+    """Enviar notificación móvil rápida que SÍ aparece"""
     service = get_mobile_notification_service()
     if service:
         service.send_mobile_notification(title, message, icon, route)
 
 def test_mobile_notifications():
-    """Probar notificaciones móviles"""
+    """Probar notificaciones móviles que SÍ aparecen"""
     service = get_mobile_notification_service()
     if service:
         service.test_notification()
