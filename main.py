@@ -1,20 +1,28 @@
 """
-🌙 ReflectApp - MAIN.PY COMPLETAMENTE CORREGIDO
-✅ ARREGLADO: Navegación correcta entre días del calendario
-✅ ARREGLADO: Paso de datos específicos entre pantallas
-✅ ARREGLADO: DailyReviewScreen recibe fecha y datos correctos
+🌙 ReflectApp - MAIN.PY CON SISTEMA DE PERFIL Y SESIONES
+✅ NUEVO: Sistema de auto-login y recordar sesión
+✅ NUEVO: Pantalla de perfil de usuario con logout
+✅ NUEVO: Navegación mejorada con botón de perfil
+✅ NUEVO: Emoji de nutria 🦫 en lugar de zen
 """
 
 import flet as ft
 from screens.login_screen import LoginScreen
 from screens.register_screen import RegisterScreen
+from screens.profile_screen import ProfileScreen
 from screens.InteractiveMoments_screen import InteractiveMomentsScreen
 from screens.new_tag_screen import NewTagScreen
 from screens.calendar_screen import CalendarScreen
 from screens.day_details_screen import DailyReviewScreen
 from screens.theme_selector_screen import ThemeSelectorScreen
 
-# ✅ IMPORTACIONES MÓVILES PARA NOTIFICACIONES
+# ✅ NUEVO: Importar sistema de sesiones
+from services.session_service import (
+    save_user_session, load_user_session, logout_user,
+    is_user_logged_in, get_auto_login_data
+)
+
+# Importaciones móviles para notificaciones
 from services.mobile_notification_service import (
     initialize_mobile_notifications,
     get_mobile_notification_service,
@@ -31,7 +39,7 @@ from services.reflect_themes_system import (
 
 
 class ReflectApp:
-    """Aplicación ReflectApp CON NAVEGACIÓN ENTRE DÍAS CORREGIDA"""
+    """Aplicación ReflectApp CON SISTEMA DE PERFIL Y SESIONES"""
 
     def __init__(self):
         self.current_user = None
@@ -40,6 +48,7 @@ class ReflectApp:
         # Pantallas
         self.login_screen = None
         self.register_screen = None
+        self.profile_screen = None  # ✅ NUEVO
         self.interactive_screen = None
         self.new_tag_screen = None
         self.calendar_screen = None
@@ -47,10 +56,10 @@ class ReflectApp:
         self.theme_selector_screen = None
         self.mobile_notification_settings_screen = None
 
-        # ✅ NUEVO: Estado para navegación entre días
+        # Estado para navegación entre días
         self.current_day_details = None
-        self.selected_date = None  # (year, month, day)
-        self.day_data = None       # Datos específicos del día
+        self.selected_date = None
+        self.day_data = None
 
         self.page = None
 
@@ -58,15 +67,15 @@ class ReflectApp:
         self.mobile_notification_service = None
         self.notifications_active = False
 
-        print("🚀 ReflectApp inicializada CON NAVEGACIÓN ENTRE DÍAS CORREGIDA")
+        print("🚀 ReflectApp inicializada CON SISTEMA DE PERFIL Y SESIONES")
 
     def main(self, page: ft.Page):
-        """Inicializar aplicación principal"""
+        """Inicializar aplicación principal con auto-login"""
         self.page = page
-        print("🚀 === MAIN APP INICIADA ===")
+        print("🚀 === MAIN APP INICIADA CON SESIONES ===")
 
         # Configuración de la página
-        page.title = "ReflectApp - Tu espacio de reflexión"
+        page.title = "ReflectApp - Tu refugio mental 🦫"
         page.theme_mode = ft.ThemeMode.SYSTEM
         page.padding = 0
         page.spacing = 0
@@ -74,7 +83,7 @@ class ReflectApp:
         page.window.height = 844
         page.window.resizable = False
 
-        # ✅ Inicializar notificaciones móviles
+        # Inicializar notificaciones móviles
         self.initialize_mobile_notification_system()
 
         # Aplicar tema inicial
@@ -83,18 +92,52 @@ class ReflectApp:
         # Crear instancias de pantallas
         self.initialize_screens()
 
-        # ✅ CONFIGURAR RUTAS CORRECTAMENTE
+        # Configurar rutas
         page.on_route_change = self.handle_route_change
         page.on_view_pop = self.handle_view_pop
         page.on_window_event = self.handle_window_event
 
-        # Iniciar en login
-        print("🔑 Iniciando en LOGIN")
-        page.go("/login")
+        # ✅ NUEVO: Verificar auto-login antes de ir a login
+        print("🔑 Verificando auto-login...")
+        auto_login_data = get_auto_login_data()
 
-    # ===============================
-    # ✅ SISTEMA DE NOTIFICACIONES MÓVIL
-    # ===============================
+        if auto_login_data:
+            print(f"🔄 Auto-login disponible para: {auto_login_data.get('email')}")
+            # Intentar auto-login
+            self.attempt_auto_login(auto_login_data)
+        else:
+            print("🔑 No hay auto-login, iniciando en LOGIN")
+            page.go("/login")
+
+    def attempt_auto_login(self, auto_login_data):
+        """✅ NUEVO: Intentar auto-login con datos guardados"""
+        try:
+            from services import db
+
+            # Obtener datos actualizados del usuario
+            email = auto_login_data.get('email')
+
+            # TODO: Necesitamos crear el método get_user_by_email en database_service
+            # Por ahora, usar los datos guardados
+            user_data = {
+                "id": auto_login_data.get('user_id'),
+                "email": auto_login_data.get('email'),
+                "name": auto_login_data.get('name'),
+                "avatar_emoji": auto_login_data.get('avatar_emoji', '🦫')
+            }
+
+            if user_data and user_data.get('id'):
+                print(f"✅ Auto-login exitoso para: {user_data.get('name')}")
+
+                # Navegar directamente a entry
+                self.navigate_to_entry(user_data)
+            else:
+                print("❌ Auto-login falló, ir a login")
+                self.page.go("/login")
+
+        except Exception as e:
+            print(f"❌ Error en auto-login: {e}")
+            self.page.go("/login")
 
     def initialize_mobile_notification_system(self):
         """Inicializar sistema de notificaciones móvil"""
@@ -120,10 +163,12 @@ class ReflectApp:
                 self.notifications_active = True
 
                 user_name = user_data.get('name', 'Viajero')
+                user_emoji = user_data.get('avatar_emoji', '🦫')
+
                 self.mobile_notification_service.send_mobile_notification(
                     title=f"¡Hola {user_name}! 👋",
-                    message="🔔 Notificaciones activas. Te recordaremos reflexionar",
-                    icon="🌟",
+                    message=f"🔔 {user_emoji} Notificaciones activas. Te recordaremos reflexionar",
+                    icon=user_emoji,
                     action_route="/entry",
                     priority="normal"
                 )
@@ -136,26 +181,24 @@ class ReflectApp:
         """Manejar eventos de ventana"""
         if e.data == "close" and self.mobile_notification_service and self.current_user:
             user_name = self.current_user.get('name', 'Viajero')
+            user_emoji = self.current_user.get('avatar_emoji', '🦫')
+
             self.mobile_notification_service.send_mobile_notification(
                 title="Hasta luego",
                 message=f"👋 Nos vemos pronto {user_name}",
-                icon="💙",
+                icon=user_emoji,
                 priority="low"
             )
 
-    # ===============================
-    # ✅ MANEJO DE RUTAS CORREGIDO
-    # ===============================
-
     def handle_route_change(self, route):
-        """✅ COMPLETAMENTE CORREGIDO: Manejar cambios de ruta con datos específicos"""
+        """Manejar cambios de ruta con sistema de perfil"""
         print(f"🛣️ === NAVEGACIÓN A: {self.page.route} ===")
         self.page.views.clear()
 
         # Aplicar tema actual
         self.apply_current_theme()
 
-        # ✅ RUTAS PRINCIPALES
+        # Rutas principales
         if self.page.route == "/login" or self.page.route == "/":
             print("🏠 Navegando a LOGIN")
             self.page.views.append(self.create_themed_login())
@@ -164,21 +207,26 @@ class ReflectApp:
             print("📝 Navegando a REGISTER")
             self.page.views.append(self.create_themed_register())
 
+        # ✅ NUEVO: Ruta de perfil
+        elif self.page.route == "/profile":
+            print("👤 Navegando a PROFILE")
+            self.handle_profile_route()
+
         elif self.page.route == "/entry":
             print("🎮 Navegando a INTERACTIVE MOMENTS")
             self.handle_interactive_route()
 
-        # ✅ RUTAS DE TAGS
+        # Rutas de tags
         elif self.page.route.startswith("/new_tag"):
             print(f"🏷️ Navegando a NEW_TAG: {self.page.route}")
             self.handle_new_tag_route()
 
-        # ✅ RUTA DE CALENDARIO
+        # Ruta de calendario
         elif self.page.route == "/calendar":
             print("📅 Navegando a CALENDAR")
             self.handle_calendar_route()
 
-        # ✅ RUTAS DE DETALLES DE DÍA - CORREGIDAS
+        # Rutas de detalles de día
         elif self.page.route.startswith("/day_details"):
             print("📊 Navegando a DAY_DETAILS")
             self.handle_day_details_route()
@@ -187,12 +235,12 @@ class ReflectApp:
             print("📝 Navegando a DAILY_REVIEW")
             self.handle_daily_review_route()
 
-        # ✅ RUTA DE SELECTOR DE TEMAS
+        # Ruta de selector de temas
         elif self.page.route == "/theme_selector":
             print("🎨 Navegando a THEME_SELECTOR")
             self.handle_theme_selector_route()
 
-        # ✅ RUTA DE CONFIGURACIÓN DE NOTIFICACIONES
+        # Ruta de configuración de notificaciones
         elif self.page.route == "/mobile_notification_settings":
             print("🔔 Navegando a MOBILE_NOTIFICATION_SETTINGS")
             self.handle_mobile_notification_settings_route()
@@ -215,11 +263,81 @@ class ReflectApp:
             self.page.go("/login")
 
     # ===============================
-    # ✅ HANDLERS DE RUTAS ESPECÍFICAS - CORREGIDOS
+    # ✅ NUEVO: HANDLER DE PERFIL
     # ===============================
+    def handle_profile_route(self):
+        """✅ NUEVO: Manejar ruta de perfil"""
+        if not self.current_user:
+            print("❌ No hay usuario - redirigiendo a login")
+            self.page.go("/login")
+            return
 
+        def on_logout():
+            """Callback para logout desde perfil"""
+            print("🚪 Logout desde perfil")
+            self.perform_logout()
+
+        def on_go_back():
+            """Volver desde perfil"""
+            self.page.go("/entry")
+
+        self.profile_screen = ProfileScreen(
+            app=self,
+            user_data=self.current_user,
+            on_logout=on_logout,
+            on_go_back=on_go_back
+        )
+
+        self.profile_screen.page = self.page
+        view = self.profile_screen.build()
+        self.apply_theme_to_view(view)
+        self.page.views.append(view)
+
+    def perform_logout(self):
+        """✅ NUEVO: Realizar logout completo"""
+        try:
+            # Enviar notificación de despedida
+            if self.mobile_notification_service and self.current_user:
+                user_name = self.current_user.get('name', 'Viajero')
+                user_emoji = self.current_user.get('avatar_emoji', '🦫')
+
+                self.mobile_notification_service.send_mobile_notification(
+                    title="Sesión cerrada",
+                    message=f"{user_emoji} Hasta luego {user_name}",
+                    icon="🚪",
+                    priority="low"
+                )
+
+            # Limpiar sesión del sistema
+            logout_user()
+
+            # Limpiar estado de la app
+            self.current_user = None
+            self.selected_date = None
+            self.day_data = None
+
+            # Detener notificaciones
+            if self.mobile_notification_service and self.notifications_active:
+                self.mobile_notification_service.stop_notification_scheduler()
+                self.notifications_active = False
+
+            print("✅ Logout completado")
+
+            # Navegar a login
+            if self.page:
+                self.page.go("/login")
+
+        except Exception as e:
+            print(f"❌ Error en logout: {e}")
+            # Forzar navegación a login de todas formas
+            if self.page:
+                self.page.go("/login")
+
+    # ===============================
+    # HANDLERS DE RUTAS EXISTENTES - ACTUALIZADOS
+    # ===============================
     def handle_interactive_route(self):
-        """Manejar ruta de InteractiveMoments"""
+        """Manejar ruta de InteractiveMoments con botón de perfil"""
         if not self.current_user:
             print("❌ No hay usuario - redirigiendo a login")
             self.page.go("/login")
@@ -260,7 +378,6 @@ class ReflectApp:
                 if entry_id:
                     print(f"✅ Momentos guardados con ID: {entry_id}")
 
-                    # Notificación de éxito
                     if self.mobile_notification_service:
                         self.mobile_notification_service.send_reflection_saved_notification()
 
@@ -275,12 +392,24 @@ class ReflectApp:
             """Volver"""
             self.page.go("/calendar")
 
+        # ✅ NUEVO: Crear InteractiveMomentsScreen con usuario actualizado
         self.interactive_screen = InteractiveMomentsScreen(
             on_moments_created=on_moments_created,
             on_go_back=on_go_back
         )
 
+        # ✅ NUEVO: Añadir método para ir al perfil
+        original_build = self.interactive_screen.build
+
+        def enhanced_build():
+            view = original_build()
+            # Añadir navegación al perfil en los botones de acción
+            self.add_profile_button_to_interactive(view)
+            return view
+
+        self.interactive_screen.build = enhanced_build
         self.interactive_screen.page = self.page
+
         if hasattr(self.interactive_screen, 'set_user'):
             self.interactive_screen.set_user(self.current_user)
 
@@ -288,11 +417,37 @@ class ReflectApp:
         self.apply_theme_to_view(view)
         self.page.views.append(view)
 
+    def add_profile_button_to_interactive(self, view):
+        """✅ NUEVO: Añadir botón de perfil a la pantalla interactive"""
+        try:
+            # Buscar el header en la vista
+            if hasattr(view, 'controls') and len(view.controls) > 0:
+                header_container = view.controls[0]
+                if hasattr(header_container, 'content') and hasattr(header_container.content, 'controls'):
+                    # Buscar los botones de acción en el header
+                    for control in header_container.content.controls:
+                        if hasattr(control, 'controls') and isinstance(control.controls, list):
+                            for subcontrol in control.controls:
+                                if hasattr(subcontrol, 'controls') and len(subcontrol.controls) >= 3:
+                                    # Añadir botón de perfil
+                                    profile_button = ft.Container(
+                                        content=ft.Text(self.current_user.get('avatar_emoji', '🦫'), size=16),
+                                        on_click=lambda e: self.page.go("/profile"),
+                                        bgcolor="#FFFFFF20",
+                                        border_radius=8,
+                                        padding=ft.padding.all(8),
+                                        tooltip="Mi Perfil"
+                                    )
+                                    subcontrol.controls.append(profile_button)
+                                    break
+        except Exception as e:
+            print(f"⚠️ Error añadiendo botón de perfil: {e}")
+
+    # Los demás métodos handle_* permanecen igual...
     def handle_new_tag_route(self):
         """Manejar ruta de nuevo tag"""
         print("🏷️ === HANDLE NEW TAG ROUTE ===")
 
-        # Determinar tipo según parámetros
         tag_type = "positive"
         if "type=negative" in self.page.route:
             tag_type = "negative"
@@ -300,12 +455,10 @@ class ReflectApp:
             tag_type = "positive"
 
         def on_tag_created(tag):
-            """Callback para crear tag"""
             print(f"🏷️ Tag creado: {tag.name}")
             self.page.go("/entry")
 
         def on_cancel():
-            """Callback para cancelar"""
             self.page.go("/entry")
 
         self.new_tag_screen = NewTagScreen(
@@ -319,7 +472,7 @@ class ReflectApp:
         self.page.views.append(view)
 
     def handle_calendar_route(self):
-        """✅ CORREGIDO: Manejar ruta del calendario con callbacks correctos"""
+        """Manejar ruta del calendario"""
         print("📅 === HANDLE CALENDAR ROUTE ===")
 
         if not self.current_user:
@@ -330,31 +483,27 @@ class ReflectApp:
         def on_go_to_entry():
             """Ir a entry"""
             print("🎮 Navegando a entry desde calendario")
-            # ✅ Limpiar datos de día específico al ir a entry
             self.selected_date = None
             self.day_data = None
             self.page.go("/entry")
 
         def on_view_day(year, month, day, details):
-            """✅ CORREGIDO: Ver detalles de un día específico con datos"""
+            """Ver detalles de un día específico"""
             print(f"📊 === NAVEGANDO A DÍA ESPECÍFICO ===")
             print(f"📅 Fecha: {year}-{month}-{day}")
             print(f"📋 Detalles: {details}")
 
-            # ✅ IMPORTANTE: Guardar datos del día seleccionado
             self.selected_date = (year, month, day)
             self.day_data = details
 
             print(f"💾 Datos guardados - Fecha: {self.selected_date}")
-            print(f"💾 Reflexión: {details.get('reflection', 'N/A')[:50]}...")
 
-            # ✅ Navegar a daily_review con datos específicos
             self.page.go("/daily_review")
 
         self.calendar_screen = CalendarScreen(
             user_data=self.current_user,
             on_go_to_entry=on_go_to_entry,
-            on_view_day=on_view_day  # ✅ IMPORTANTE: Callback que recibe datos específicos
+            on_view_day=on_view_day
         )
 
         self.calendar_screen.page = self.page
@@ -366,13 +515,12 @@ class ReflectApp:
         self.page.views.append(view)
 
     def handle_day_details_route(self):
-        """Manejar ruta de detalles del día - REDIRIGIR A DAILY REVIEW"""
+        """Manejar ruta de detalles del día"""
         print("📊 === HANDLE DAY DETAILS ROUTE ===")
-        # Redirigir a la pantalla de revisión diaria moderna
         self.page.go("/daily_review")
 
     def handle_daily_review_route(self):
-        """✅ COMPLETAMENTE CORREGIDO: Manejar ruta de revisión diaria con datos específicos"""
+        """Manejar ruta de revisión diaria"""
         print("📝 === HANDLE DAILY REVIEW ROUTE ===")
 
         if not self.current_user:
@@ -385,7 +533,6 @@ class ReflectApp:
             print("🔙 Volviendo al calendario desde daily_review")
             self.page.go("/calendar")
 
-        # ✅ IMPORTANTE: Crear DailyReviewScreen con datos específicos del día
         print(f"🔍 Creando DailyReviewScreen...")
         print(f"📅 Fecha seleccionada: {self.selected_date}")
         print(f"📋 Datos del día: {self.day_data}")
@@ -394,8 +541,8 @@ class ReflectApp:
             app=self,
             user_data=self.current_user,
             on_go_back=on_go_back,
-            target_date=self.selected_date,  # ✅ NUEVO: Pasar fecha específica
-            day_details=self.day_data        # ✅ NUEVO: Pasar datos específicos
+            target_date=self.selected_date,
+            day_details=self.day_data
         )
 
         self.day_details_screen.page = self.page
@@ -406,22 +553,19 @@ class ReflectApp:
         print(f"✅ DailyReviewScreen creada correctamente")
 
     def handle_theme_selector_route(self):
-        """Manejar ruta del selector de temas - CORREGIDA"""
+        """Manejar ruta del selector de temas"""
         print("🎨 === HANDLE THEME SELECTOR ROUTE ===")
 
         def on_theme_changed(theme_type):
-            """Callback cuando cambia el tema"""
             print(f"🎨 Tema cambiado a: {theme_type}")
             self.apply_current_theme()
             self.update_all_screens_theme()
             self.show_theme_change_message(theme_type)
 
-            # Forzar actualización de la página
             if self.page:
                 self.page.update()
 
         def on_go_back():
-            """Volver a entry"""
             self.page.go("/entry")
 
         self.theme_selector_screen = ThemeSelectorScreen(
@@ -443,22 +587,18 @@ class ReflectApp:
             self.page.go("/login")
             return
 
-        # Importar la pantalla de configuración móvil
         from screens.mobile_notifications_settings_screen import MobileNotificationSettingsScreen
 
         def on_settings_changed(new_settings):
-            """Callback cuando cambian las configuraciones"""
             print(f"📱 Configuración móvil actualizada: {new_settings}")
 
             if self.mobile_notification_service:
                 self.mobile_notification_service.update_settings(new_settings)
 
         def on_go_back():
-            """Volver"""
             self.page.go("/entry")
 
         def on_test_notification():
-            """Probar notificaciones móviles"""
             if self.mobile_notification_service:
                 self.mobile_notification_service.test_notification()
 
@@ -476,12 +616,11 @@ class ReflectApp:
         self.page.views.append(view)
 
     # ===============================
-    # ✅ MÉTODOS DE NAVEGACIÓN
+    # MÉTODOS DE NAVEGACIÓN - ACTUALIZADOS
     # ===============================
-
     def navigate_to_entry(self, user_data):
-        """Navegar a la pantalla de entrada"""
-        print(f"🧭 === NAVIGATE TO ENTRY ===")
+        """✅ ACTUALIZADO: Navegar con sistema de sesiones"""
+        print(f"🧭 === NAVIGATE TO ENTRY CON SESIONES ===")
         print(f"👤 Usuario: {user_data.get('name')} (ID: {user_data.get('id')})")
 
         self.current_user = user_data
@@ -496,36 +635,16 @@ class ReflectApp:
         print(f"✅ === NAVIGATE TO ENTRY COMPLETADO ===")
 
     def navigate_to_login(self):
-        """Navegar al login"""
-        print("🔑 === NAVIGATE TO LOGIN ===")
-
-        # Mensaje de logout móvil
-        if self.current_user and self.mobile_notification_service:
-            user_name = self.current_user.get('name', 'Viajero')
-            self.mobile_notification_service.send_mobile_notification(
-                title="Sesión cerrada",
-                message=f"👋 Hasta luego {user_name}",
-                icon="🚪",
-                priority="low"
-            )
-
-        self.current_user = None
-
-        # ✅ Limpiar datos de navegación
-        self.selected_date = None
-        self.day_data = None
-
-        if self.page:
-            self.page.go("/login")
-        print("✅ === NAVIGATE TO LOGIN COMPLETADO ===")
+        """Navegar al login con logout completo"""
+        print("🔑 === NAVIGATE TO LOGIN CON LOGOUT ===")
+        self.perform_logout()
 
     # ===============================
-    # ✅ MÉTODOS AUXILIARES
+    # MÉTODOS AUXILIARES - ACTUALIZADOS
     # ===============================
-
     def initialize_screens(self):
         """Inicializar todas las pantallas"""
-        print("🏗️ Inicializando pantallas...")
+        print("🏗️ Inicializando pantallas con sistema de sesiones...")
         self.login_screen = LoginScreen(self)
         self.register_screen = RegisterScreen(self)
         print("✅ Pantallas inicializadas")
@@ -591,7 +710,7 @@ class ReflectApp:
 
 
 def create_improved_app():
-    """Crear aplicación con navegación entre días corregida"""
+    """Crear aplicación con sistema de perfil y sesiones"""
 
     def main(page: ft.Page):
         """Función principal de la aplicación"""
@@ -606,26 +725,27 @@ def create_improved_app():
         apply_theme_to_page(page)
         app.main(page)
 
-        print("🌙 ReflectApp iniciada CON NAVEGACIÓN ENTRE DÍAS FUNCIONANDO")
+        print("🦫 ReflectApp iniciada CON SISTEMA DE PERFIL Y SESIONES")
         print(f"🎨 Tema inicial: {get_theme().display_name}")
         print("🔔 Notificaciones móviles: ACTIVAS")
-        print("✅ CORRECCIONES APLICADAS:")
-        print("   📅 Calendario → Daily Review con datos específicos")
-        print("   🎮 InteractiveMoments → Más emojis, slider funcionando, lista de momentos")
-        print("   📊 Daily Review → Modo vista vs edición según fecha")
+        print("✅ NUEVAS CARACTERÍSTICAS:")
+        print("   👤 Sistema de perfil de usuario")
+        print("   🔐 Auto-login y recordar sesión")
+        print("   🚪 Logout completo con confirmación")
+        print("   🦫 Emoji de nutria en lugar de zen")
 
     return main
 
 
 if __name__ == "__main__":
-    print("🚀 === INICIANDO REFLECTAPP COMPLETAMENTE CORREGIDA ===")
-    print("📋 CORRECCIONES IMPLEMENTADAS:")
-    print("   ✅ Calendario: Navegación correcta entre días")
-    print("   ✅ InteractiveMoments: Slider funciona, más emojis, lista de momentos")
-    print("   ✅ Daily Review: Muestra datos específicos del día seleccionado")
-    print("   ✅ Centrado perfecto de emojis y textos")
-    print("   ✅ Mejor aprovechamiento del espacio vertical")
-    print("   ✅ Persistencia corregida en base de datos")
+    print("🚀 === INICIANDO REFLECTAPP CON PERFIL Y SESIONES ===")
+    print("📋 NUEVAS CARACTERÍSTICAS IMPLEMENTADAS:")
+    print("   ✅ Sistema de auto-login con 'Recordarme'")
+    print("   ✅ Pantalla de perfil completa con estadísticas")
+    print("   ✅ Logout seguro con confirmación")
+    print("   ✅ Login screen mejorada con mejor diseño")
+    print("   ✅ Emoji de nutria 🦫 en lugar de zen 🧘‍♀️")
+    print("   ✅ Navegación fluida entre perfil y otras pantallas")
     print("=" * 70)
 
     # Crear y ejecutar aplicación
