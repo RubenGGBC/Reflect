@@ -1,9 +1,8 @@
 """
-🔐 Login Screen MEJORADA - ReflectApp
-✅ NUEVO: Auto-login con sesiones guardadas
-✅ NUEVO: Checkbox "Recordarme"
-✅ NUEVO: Diseño visual mejorado con animaciones
-✅ NUEVO: Emoji de nutria en lugar de zen 🦫
+🔐 Login Screen CORREGIDA - ReflectApp
+✅ ARREGLADO: Removidos todos los iconos
+✅ ARREGLADO: Funciones de Flet verificadas
+✅ ARREGLADO: Auto-login funcional
 """
 
 import flet as ft
@@ -22,15 +21,13 @@ class LoginScreen:
         self.error_container = None
         self.show_password = False
         self.is_loading = False
-
-        # Auto-login
         self.checking_auto_login = False
 
     def build(self):
-        """Construir vista de login MEJORADA con auto-login"""
+        """Construir vista de login CORREGIDA con scroll funcional"""
         theme = get_theme()
 
-        # ✅ NUEVO: Verificar auto-login al cargar
+        # Verificar auto-login al cargar
         self.check_auto_login()
 
         # Crear campos del formulario
@@ -49,42 +46,47 @@ class LoginScreen:
             padding=ft.padding.all(16),
             border_radius=12,
             visible=False,
-            margin=ft.margin.only(bottom=16),
-            animate_opacity=300
+            margin=ft.margin.only(bottom=16)
         )
 
-        # ✅ NUEVO: Hero Section con nutria y mejor diseño
+        # Hero Section con nutria
         hero_section = self.create_enhanced_hero_section(theme)
 
-        # ✅ MEJORADO: Formulario con glassmorphism
+        # Formulario con glassmorphism
         form_section = self.create_enhanced_form_section(theme)
 
-        # ✅ NUEVO: Quote section con más estilo
+        # Quote section
         quote_section = self.create_enhanced_quote_section(theme)
 
-        # ✅ NUEVO: Loading overlay para auto-login
+        # Loading overlay para auto-login
         loading_overlay = self.create_loading_overlay(theme)
 
-        # Vista principal
-        main_content = ft.Column(
-            scroll=ft.ScrollMode.AUTO,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                ft.Container(height=60),  # Espaciado superior
-                hero_section,
-                form_section,
-                quote_section,
-                ft.Container(height=40)   # Espaciado inferior
-            ]
+        # ✅ ARREGLADO: Vista principal con scroll REAL
+        main_content = ft.Container(
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Container(height=40),  # Espaciado superior reducido
+                    hero_section,
+                    form_section,
+                    quote_section,
+                    ft.Container(height=40)   # Espaciado inferior
+                ],
+                spacing=0
+            ),
+            padding=ft.padding.all(20),
+            expand=True  # ✅ IMPORTANTE: expand para que ocupe toda la altura
+        )
+
+        # ✅ ARREGLADO: Contenedor scrollable principal
+        scrollable_content = ft.Container(
+            content=main_content,
+            expand=True
         )
 
         # Stack para overlay de loading
         content_stack = ft.Stack([
-            ft.Container(
-                expand=True,
-                content=main_content,
-                padding=ft.padding.all(24)
-            ),
+            scrollable_content,
             loading_overlay
         ])
 
@@ -93,18 +95,19 @@ class LoginScreen:
             controls=[content_stack],
             bgcolor=theme.primary_bg,
             padding=0,
-            spacing=0
+            spacing=0,
+            scroll=ft.ScrollMode.AUTO  # ✅ SCROLL EN LA VISTA
         )
 
         return view
 
     def create_enhanced_hero_section(self, theme):
-        """✅ NUEVO: Hero section mejorada con nutria y animaciones"""
+        """Hero section con nutria y animaciones - SIN ICONOS"""
         return ft.Container(
             content=ft.Column(
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    # ✅ NUEVO: Nutria con efecto de resplandor
+                    # Nutria con efecto de resplandor
                     ft.Container(
                         content=ft.Text("🦫", size=60, text_align=ft.TextAlign.CENTER),
                         width=120,
@@ -126,14 +129,12 @@ class LoginScreen:
                                 theme.surface,
                                 theme.accent_primary + "20"
                             ]
-                        ),
-                        animate_scale=ft.animation.Animation(1000, ft.AnimationCurve.BOUNCE_OUT),
-                        animate_opacity=300
+                        )
                     ),
 
                     ft.Container(height=24),
 
-                    # ✅ MEJORADO: Título con gradiente de texto simulado
+                    # Título
                     ft.Column([
                         ft.Text(
                             "ReflectApp",
@@ -156,7 +157,7 @@ class LoginScreen:
 
                     ft.Container(height=16),
 
-                    # ✅ NUEVO: Subtítulo con decoraciones mejoradas
+                    # Subtítulo mejorado
                     ft.Container(
                         content=ft.Row(
                             alignment=ft.MainAxisAlignment.CENTER,
@@ -164,8 +165,7 @@ class LoginScreen:
                                 ft.Container(
                                     width=40, height=2,
                                     bgcolor=theme.accent_primary,
-                                    border_radius=1,
-                                    animate_size=ft.animation.Animation(1000, ft.AnimationCurve.EASE_OUT)
+                                    border_radius=1
                                 ),
                                 ft.Container(
                                     content=ft.Text(
@@ -180,17 +180,15 @@ class LoginScreen:
                                 ft.Container(
                                     width=40, height=2,
                                     bgcolor=theme.accent_primary,
-                                    border_radius=1,
-                                    animate_size=ft.animation.Animation(1000, ft.AnimationCurve.EASE_OUT)
+                                    border_radius=1
                                 ),
                             ]
-                        ),
-                        animate_opacity=300
+                        )
                     ),
 
                     ft.Container(height=12),
 
-                    # ✅ NUEVO: Iconos flotantes decorativos
+                    # Iconos decorativos (emojis)
                     ft.Row(
                         alignment=ft.MainAxisAlignment.CENTER,
                         spacing=24,
@@ -204,16 +202,15 @@ class LoginScreen:
                     )
                 ]
             ),
-            margin=ft.margin.only(bottom=48),
-            animate_opacity=300
+            margin=ft.margin.only(bottom=48)
         )
 
     def create_form_fields(self, theme):
-        """Crear campos del formulario con mejor diseño"""
+        """Crear campos del formulario SIN ICONOS"""
 
-        # ✅ MEJORADO: Campo Email con icono y mejor estilo
+        # Campo Email SIN ICONO
         self.email_field = ft.TextField(
-            label="📧 Correo electrónico",
+            label="Correo electrónico",
             hint_text="tu@email.com",
             border=ft.InputBorder.OUTLINE,
             border_color=theme.border_color,
@@ -224,14 +221,12 @@ class LoginScreen:
             content_padding=ft.padding.all(20),
             text_style=ft.TextStyle(size=16, color=theme.text_primary),
             cursor_color=theme.accent_primary,
-            label_style=ft.TextStyle(size=14, color=theme.text_secondary),
-            prefix_icon=ft.icons.EMAIL,
-            animate_opacity=300
+            label_style=ft.TextStyle(size=14, color=theme.text_secondary)
         )
 
-        # ✅ MEJORADO: Campo Password con mejor visualización
+        # Campo Password SIN ICONO
         self.password_field = ft.TextField(
-            label="🔒 Contraseña",
+            label="Contraseña",
             hint_text="••••••••",
             password=True,
             can_reveal_password=True,
@@ -245,12 +240,10 @@ class LoginScreen:
             text_style=ft.TextStyle(size=16, color=theme.text_primary),
             cursor_color=theme.accent_primary,
             label_style=ft.TextStyle(size=14, color=theme.text_secondary),
-            prefix_icon=ft.icons.LOCK,
-            on_submit=self.login_click,
-            animate_opacity=300
+            on_submit=self.login_click
         )
 
-        # ✅ NUEVO: Checkbox "Recordarme"
+        # Checkbox "Recordarme"
         self.remember_me_checkbox = ft.Checkbox(
             label="Recordar mi sesión",
             value=False,
@@ -260,12 +253,11 @@ class LoginScreen:
         )
 
     def create_enhanced_form_section(self, theme):
-        """✅ MEJORADO: Sección del formulario con mejor glassmorphism"""
+        """Sección del formulario con glassmorphism - SIN ICONOS"""
         return ft.Container(
             content=ft.Column(
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    # ✅ NUEVO: Contenedor principal con efecto glassmorphism mejorado
                     ft.Container(
                         content=ft.Column(
                             controls=[
@@ -279,7 +271,7 @@ class LoginScreen:
 
                                 ft.Container(height=16),
 
-                                # ✅ NUEVO: Remember me checkbox con mejor styling
+                                # Remember me checkbox
                                 ft.Container(
                                     content=ft.Row([
                                         self.remember_me_checkbox,
@@ -288,8 +280,7 @@ class LoginScreen:
                                             "¿Olvidaste tu contraseña?",
                                             on_click=self.forgot_password,
                                             style=ft.ButtonStyle(
-                                                color=theme.accent_primary,
-                                                overlay_color={"hovered": theme.accent_primary + "10"}
+                                                color=theme.accent_primary
                                             )
                                         )
                                     ]),
@@ -301,7 +292,7 @@ class LoginScreen:
                                 # Error container
                                 self.error_container,
 
-                                # ✅ MEJORADO: Botón principal con gradiente
+                                # Botón principal
                                 ft.Container(
                                     content=ft.ElevatedButton(
                                         content=ft.Row(
@@ -320,31 +311,25 @@ class LoginScreen:
                                         width=320,
                                         height=56,
                                         style=ft.ButtonStyle(
-                                            bgcolor={"": theme.accent_primary},
-                                            color={"": "#FFFFFF"},
+                                            bgcolor=theme.accent_primary,
+                                            color="#FFFFFF",
                                             elevation=8,
                                             shadow_color=theme.accent_primary + "40",
-                                            shape=ft.RoundedRectangleBorder(radius=16),
-                                            animation_duration=300
+                                            shape=ft.RoundedRectangleBorder(radius=16)
                                         )
-                                    ),
-                                    animate_scale=ft.animation.Animation(200, ft.AnimationCurve.EASE_OUT)
+                                    )
                                 ),
 
                                 ft.Container(height=24),
 
-                                # ✅ MEJORADO: Separador con mejor diseño
+                                # Separador
                                 ft.Row(
                                     alignment=ft.MainAxisAlignment.CENTER,
                                     controls=[
                                         ft.Container(
                                             width=100,
                                             height=1,
-                                            gradient=ft.LinearGradient(
-                                                begin=ft.alignment.center_left,
-                                                end=ft.alignment.center_right,
-                                                colors=["transparent", theme.border_color, "transparent"]
-                                            )
+                                            bgcolor=theme.border_color
                                         ),
                                         ft.Container(
                                             content=ft.Text(
@@ -357,18 +342,14 @@ class LoginScreen:
                                         ft.Container(
                                             width=100,
                                             height=1,
-                                            gradient=ft.LinearGradient(
-                                                begin=ft.alignment.center_left,
-                                                end=ft.alignment.center_right,
-                                                colors=["transparent", theme.border_color, "transparent"]
-                                            )
+                                            bgcolor=theme.border_color
                                         )
                                     ]
                                 ),
 
                                 ft.Container(height=24),
 
-                                # ✅ MEJORADO: Botón registro con mejor estilo
+                                # Botón registro
                                 ft.OutlinedButton(
                                     content=ft.Row(
                                         alignment=ft.MainAxisAlignment.CENTER,
@@ -386,39 +367,42 @@ class LoginScreen:
                                     width=320,
                                     height=56,
                                     style=ft.ButtonStyle(
-                                        color={"": theme.positive_main},
+                                        color=theme.positive_main,
                                         side=ft.BorderSide(2, theme.positive_main + "60"),
-                                        shape=ft.RoundedRectangleBorder(radius=16),
-                                        bgcolor={"hovered": theme.positive_main + "10"},
-                                        animation_duration=200
+                                        shape=ft.RoundedRectangleBorder(radius=16)
                                     )
                                 ),
 
-                                # ✅ MEJORADO: Usuario de prueba con mejor styling
+                                # ✅ BOTÓN MODO DESARROLLADOR - VISIBLE Y FUNCIONAL
                                 ft.Container(
                                     content=ft.TextButton(
                                         content=ft.Row([
-                                            ft.Text("🧪", size=14),
-                                            ft.Container(width=4),
+                                            ft.Text("🧪", size=16),
+                                            ft.Container(width=6),
                                             ft.Text(
                                                 "Modo desarrollador",
-                                                size=13,
-                                                color=theme.text_hint
+                                                size=14,
+                                                color=theme.text_hint,
+                                                weight=ft.FontWeight.W_500
                                             )
                                         ], alignment=ft.MainAxisAlignment.CENTER),
                                         on_click=self.create_test_user,
                                         style=ft.ButtonStyle(
-                                            overlay_color={"hovered": theme.text_hint + "10"},
-                                            shape=ft.RoundedRectangleBorder(radius=12)
+                                            shape=ft.RoundedRectangleBorder(radius=12),
+                                            bgcolor={"hovered": theme.surface},
+                                            overlay_color={"hovered": theme.accent_primary + "20"}
                                         )
                                     ),
-                                    margin=ft.margin.only(top=16)
+                                    margin=ft.margin.only(top=20),
+                                    padding=ft.padding.all(8),
+                                    border_radius=12,
+                                    border=ft.border.all(1, theme.border_color + "50")
                                 )
                             ]
                         ),
                         width=380,
                         padding=ft.padding.all(32),
-                        bgcolor=theme.surface + "F0",  # Más transparencia
+                        bgcolor=theme.surface + "F0",
                         border_radius=28,
                         border=ft.border.all(1, theme.border_color + "80"),
                         shadow=ft.BoxShadow(
@@ -426,8 +410,7 @@ class LoginScreen:
                             blur_radius=32,
                             color="#00000020",
                             offset=ft.Offset(0, 12)
-                        ),
-                        animate_opacity=300
+                        )
                     )
                 ]
             ),
@@ -435,12 +418,11 @@ class LoginScreen:
         )
 
     def create_enhanced_quote_section(self, theme):
-        """✅ NUEVO: Sección de quote mejorada con más estilo"""
+        """Sección de quote mejorada"""
         return ft.Container(
             content=ft.Column(
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    # ✅ Quote principal con mejor tipografía
                     ft.Container(
                         content=ft.Text(
                             '"Cada reflexión es un paso hacia la paz interior"',
@@ -455,7 +437,7 @@ class LoginScreen:
 
                     ft.Container(height=20),
 
-                    # ✅ NUEVO: Features destacadas con iconos
+                    # Features destacadas SIN ICONOS
                     ft.Row(
                         alignment=ft.MainAxisAlignment.CENTER,
                         spacing=24,
@@ -481,12 +463,11 @@ class LoginScreen:
                         ]
                     )
                 ]
-            ),
-            animate_opacity=300
+            )
         )
 
     def create_loading_overlay(self, theme):
-        """✅ NUEVO: Overlay de loading para auto-login"""
+        """Overlay de loading para auto-login"""
         return ft.Container(
             content=ft.Container(
                 content=ft.Column([
@@ -520,52 +501,38 @@ class LoginScreen:
             animate_opacity=300
         )
 
+    # Resto de métodos permanecen igual...
     def check_auto_login(self):
-        """✅ NUEVO: Verificar si hay datos de auto-login"""
+        """Verificar si hay datos de auto-login"""
         def check_in_background():
             try:
                 auto_login_data = get_auto_login_data()
-
                 if auto_login_data:
                     print(f"🔄 Auto-login disponible para: {auto_login_data.get('email')}")
-
                     if self.page:
-                        # Mostrar loading
                         self.show_loading_overlay(True)
-
-                        # Simular un pequeño delay para UX
                         time.sleep(1)
-
-                        # Intentar login automático
                         self.perform_auto_login(auto_login_data)
                 else:
                     print("ℹ️ No hay datos de auto-login")
-
             except Exception as e:
                 print(f"❌ Error en auto-login: {e}")
                 if self.page:
                     self.show_loading_overlay(False)
 
-        # Ejecutar en hilo separado para no bloquear UI
         threading.Thread(target=check_in_background, daemon=True).start()
 
     def perform_auto_login(self, auto_login_data):
-        """✅ ACTUALIZADO: Realizar auto-login con datos guardados"""
+        """Realizar auto-login con datos guardados"""
         try:
             from services import db
-
-            # ✅ CORREGIDO: Intentar obtener datos actualizados del usuario
             email = auto_login_data.get('email')
             user_data = db.get_user_by_email(email)
 
             if user_data:
                 print(f"✅ Auto-login exitoso para: {user_data.get('name')}")
-
-                # Prellenar campos (opcional, para mostrar que se está auto-logueando)
                 if self.email_field:
                     self.email_field.value = email
-
-                # Navegar automáticamente
                 if self.page:
                     self.show_loading_overlay(False)
                     self.app.navigate_to_entry(user_data)
@@ -574,17 +541,15 @@ class LoginScreen:
                 if self.page:
                     self.show_loading_overlay(False)
                     self.show_error("Sesión expirada, inicia sesión nuevamente")
-
         except Exception as e:
             print(f"❌ Error en auto-login: {e}")
             if self.page:
                 self.show_loading_overlay(False)
 
     def show_loading_overlay(self, show: bool):
-        """✅ NUEVO: Mostrar/ocultar overlay de loading"""
+        """Mostrar/ocultar overlay de loading"""
         if self.page and len(self.page.controls) > 0:
             try:
-                # El overlay está en el Stack
                 stack = self.page.controls[0]
                 if hasattr(stack, 'controls') and len(stack.controls) > 1:
                     overlay = stack.controls[1]
@@ -594,7 +559,7 @@ class LoginScreen:
                 print(f"⚠️ Error mostrando overlay: {e}")
 
     def show_error(self, message):
-        """Mostrar mensaje de error con animación mejorada"""
+        """Mostrar mensaje de error"""
         self.error_container.content.value = f"⚠️ {message}"
         self.error_container.visible = True
         if self.page:
@@ -607,7 +572,7 @@ class LoginScreen:
             self.page.update()
 
     def show_success(self, message):
-        """Mostrar mensaje de éxito con mejor estilo"""
+        """Mostrar mensaje de éxito"""
         if self.page:
             theme = get_theme()
             snackbar = ft.SnackBar(
@@ -619,23 +584,15 @@ class LoginScreen:
                 bgcolor=theme.positive_main,
                 duration=3000,
                 elevation=10,
-                behavior=ft.SnackBarBehavior.FLOATING,
                 shape=ft.RoundedRectangleBorder(radius=12)
             )
             self.page.overlay.append(snackbar)
             snackbar.open = True
             self.page.update()
 
-    def set_loading(self, loading):
-        """Cambiar estado de carga"""
-        self.is_loading = loading
-        if self.page:
-            self.page.update()
-
     def login_click(self, e):
-        """✅ MEJORADO: Login con sistema de sesiones"""
+        """Login con sistema de sesiones"""
         self.page = e.page
-
         email = self.email_field.value.strip() if self.email_field.value else ""
         password = self.password_field.value if self.password_field.value else ""
         remember_me = self.remember_me_checkbox.value if self.remember_me_checkbox else False
@@ -654,16 +611,14 @@ class LoginScreen:
             return
 
         self.hide_error()
-        self.set_loading(True)
 
         try:
             from services import db
             usuario = db.login_user(email, password)
 
             if usuario:
-                # ✅ NUEVO: Guardar sesión con opción "recordarme"
+                # Guardar sesión con opción "recordarme"
                 save_user_session(usuario, remember_me)
-
                 nombre = usuario.get("name", email.split("@")[0])
                 remember_text = " (Sesión guardada)" if remember_me else ""
                 self.show_success(f"🌸 ¡Bienvenido de vuelta, {nombre}!{remember_text}")
@@ -682,8 +637,6 @@ class LoginScreen:
         except Exception as ex:
             print(f"Error en login: {ex}")
             self.show_error("Error del sistema. Intenta de nuevo")
-        finally:
-            self.set_loading(False)
 
     def register_click(self, e):
         """Navegar a registro"""
@@ -691,13 +644,12 @@ class LoginScreen:
         self.page.go("/register")
 
     def forgot_password(self, e):
-        """✅ NUEVO: Función para contraseña olvidada (placeholder)"""
+        """Función para contraseña olvidada"""
         if self.page:
-            # TODO: Implementar recuperación de contraseña
             self.show_success("🔄 Función en desarrollo - Contacta con soporte")
 
     def create_test_user(self, e):
-        """Crear usuario de prueba con nutria"""
+        """✅ MEJORADO: Crear usuario de prueba con nutria"""
         self.page = e.page
         try:
             from services import db
@@ -705,16 +657,37 @@ class LoginScreen:
             password = "reflect123"
             name = "Viajero Zen"
 
+            # Mostrar mensaje de creación
+            self.show_success("🧪 Creando perfil de desarrollador...")
+
             user_id = db.create_user(email, password, name, avatar_emoji="🦫")
             if user_id:
-                self.show_success("🧪 Perfil zen creado exitosamente")
+                self.show_success("✅ Perfil zen creado exitosamente")
             else:
-                self.show_success("🧪 Perfil zen ya existe y está listo")
+                self.show_success("✅ Perfil zen ya existe y está listo")
 
-            # Prellenar campos
+            # Prellenar campos automáticamente
             self.email_field.value = email
             self.password_field.value = password
+
+            # Marcar remember me por defecto en modo dev
+            self.remember_me_checkbox.value = True
+
             self.page.update()
+
+            # Auto-login después de 2 segundos
+            import threading
+            import time
+
+            def auto_login():
+                time.sleep(2)
+                if self.page:
+                    try:
+                        self.login_click(e)
+                    except:
+                        pass
+
+            threading.Thread(target=auto_login, daemon=True).start()
 
         except Exception as ex:
             print(f"Error creando usuario: {ex}")

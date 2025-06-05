@@ -1,10 +1,12 @@
 """
-👤 Profile Screen - ReflectApp
-Pantalla de perfil de usuario con logout, cambio de avatar y estadísticas
+👤 Profile Screen CORREGIDA - ReflectApp
+✅ ARREGLADO: Removidos todos los iconos ft.Icon y ft.icons
+✅ ARREGLADO: Funciones de Flet verificadas
+✅ ARREGLADO: Usando solo emojis y texto
 """
 
 import flet as ft
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Dict, Any, Callable, Optional
 from services.reflect_themes_system import (
     get_theme, create_themed_container, create_themed_button,
@@ -12,7 +14,7 @@ from services.reflect_themes_system import (
 )
 
 class ProfileScreen:
-    """Pantalla de perfil de usuario con diseño moderno"""
+    """Pantalla de perfil de usuario con diseño moderno SIN ICONOS"""
 
     def __init__(self, app=None, user_data=None, on_logout: Callable = None, on_go_back: Callable = None):
         self.app = app
@@ -34,7 +36,7 @@ class ProfileScreen:
         print(f"👤 ProfileScreen inicializada para: {self.user_data.get('name', 'Usuario')}")
 
     def build(self):
-        """Construir vista de perfil"""
+        """Construir vista de perfil SIN ICONOS"""
         self.theme = get_theme()
 
         # Cargar estadísticas del usuario
@@ -103,7 +105,7 @@ class ProfileScreen:
         return view
 
     def build_profile_info_section(self):
-        """Sección de información personal del usuario"""
+        """Sección de información personal del usuario SIN ICONOS"""
         user_name = self.user_data.get('name', 'Usuario Zen')
         user_email = self.user_data.get('email', 'email@ejemplo.com')
         join_date = self.user_data.get('created_at', datetime.now().isoformat())
@@ -130,8 +132,7 @@ class ProfileScreen:
                     "Cambiar",
                     on_click=self.show_avatar_picker,
                     style=ft.ButtonStyle(
-                        color=self.theme.accent_primary,
-                        overlay_color={"hovered": self.theme.accent_primary + "10"}
+                        color=self.theme.accent_primary
                     )
                 )
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
@@ -143,7 +144,7 @@ class ProfileScreen:
             alignment=ft.alignment.center
         )
 
-        # Campo de nombre editable
+        # Campo de nombre editable SIN ICONO
         self.name_field = ft.TextField(
             value=user_name,
             hint_text="Tu nombre",
@@ -154,19 +155,18 @@ class ProfileScreen:
             filled=True,
             bgcolor=self.theme.surface,
             content_padding=ft.padding.all(16),
-            text_style=ft.TextStyle(color=self.theme.text_primary, size=16),
-            prefix_icon=ft.icons.PERSON
+            text_style=ft.TextStyle(color=self.theme.text_primary, size=16)
         )
 
-        # Información del usuario
+        # Información del usuario SIN ICONOS
         info_section = ft.Column([
             self.name_field,
             ft.Container(height=12),
 
-            # Email (no editable por seguridad)
+            # Email (no editable por seguridad) - SIN ICONO
             ft.Container(
                 content=ft.Row([
-                    ft.Icon(ft.icons.EMAIL, color=self.theme.text_secondary, size=20),
+                    ft.Text("📧", size=20, color=self.theme.text_secondary),
                     ft.Container(width=12),
                     ft.Text(user_email, size=14, color=self.theme.text_secondary)
                 ]),
@@ -178,10 +178,10 @@ class ProfileScreen:
 
             ft.Container(height=12),
 
-            # Fecha de registro
+            # Fecha de registro - SIN ICONO
             ft.Container(
                 content=ft.Row([
-                    ft.Icon(ft.icons.CALENDAR_TODAY, color=self.theme.text_secondary, size=20),
+                    ft.Text("📅", size=20, color=self.theme.text_secondary),
                     ft.Container(width=12),
                     ft.Text(f"Miembro desde {formatted_date}", size=14, color=self.theme.text_secondary)
                 ]),
@@ -306,7 +306,7 @@ class ProfileScreen:
         )
 
     def build_account_settings_section(self):
-        """Sección de configuración de cuenta"""
+        """Sección de configuración de cuenta SIN ICONOS"""
         settings_options = [
             {
                 "icon": "🎨",
@@ -353,7 +353,7 @@ class ProfileScreen:
                             color=self.theme.text_secondary
                         )
                     ], expand=True, spacing=2),
-                    ft.Icon(ft.icons.CHEVRON_RIGHT, color=self.theme.text_hint, size=20)
+                    ft.Text("→", size=20, color=self.theme.text_hint)  # EMOJI en lugar de icono
                 ], alignment=ft.CrossAxisAlignment.CENTER),
                 padding=ft.padding.all(16),
                 border_radius=12,
@@ -378,7 +378,7 @@ class ProfileScreen:
         )
 
     def build_logout_section(self):
-        """Sección de logout con confirmación"""
+        """Sección de logout con confirmación SIN ICONOS"""
         return create_themed_container(
             content=ft.Column([
                 ft.Text(
@@ -389,10 +389,10 @@ class ProfileScreen:
                 ),
                 ft.Container(height=16),
 
-                # Información de sesión
+                # Información de sesión SIN ICONO
                 ft.Container(
                     content=ft.Row([
-                        ft.Icon(ft.icons.LOGIN, color=self.theme.positive_main, size=20),
+                        ft.Text("🔐", size=20, color=self.theme.positive_main),
                         ft.Container(width=12),
                         ft.Text(
                             "Sesión activa",
@@ -413,10 +413,10 @@ class ProfileScreen:
 
                 ft.Container(height=16),
 
-                # Botón de logout
+                # Botón de logout SIN ICONO
                 ft.ElevatedButton(
                     content=ft.Row([
-                        ft.Icon(ft.icons.LOGOUT, color="#FFFFFF", size=20),
+                        ft.Text("🚪", size=20),
                         ft.Container(width=8),
                         ft.Text(
                             "Cerrar Sesión",
@@ -466,7 +466,7 @@ class ProfileScreen:
                 positive_count += len(entry.get('positive_tags', []))
                 negative_count += len(entry.get('negative_tags', []))
 
-            # TODO: Calcular racha de días consecutivos
+            # Calcular racha de días consecutivos
             streak_days = self.calculate_streak_days(entries)
 
             self.user_stats = {
@@ -499,7 +499,7 @@ class ProfileScreen:
 
                 if entry_date == current_date:
                     streak += 1
-                    current_date -= ft.timedelta(days=1)
+                    current_date -= timedelta(days=1)
                 else:
                     break
 
@@ -576,12 +576,20 @@ class ProfileScreen:
             user_id = self.user_data['id']
             new_name = self.name_field.value.strip()
 
-            # TODO: Añadir método update_user en database_service
-            # Por ahora, actualizar los datos locales
-            self.user_data['name'] = new_name
-            self.user_data['avatar_emoji'] = self.selected_avatar
+            # Actualizar datos usando el método del servicio de base de datos
+            success = db.update_user_profile(
+                user_id=user_id,
+                name=new_name,
+                avatar_emoji=self.selected_avatar
+            )
 
-            self.show_message("✅ Perfil actualizado correctamente")
+            if success:
+                # Actualizar datos locales
+                self.user_data['name'] = new_name
+                self.user_data['avatar_emoji'] = self.selected_avatar
+                self.show_message("✅ Perfil actualizado correctamente")
+            else:
+                self.show_message("❌ Error actualizando perfil", is_error=True)
 
         except Exception as e:
             print(f"❌ Error guardando perfil: {e}")
@@ -643,7 +651,7 @@ class ProfileScreen:
             print(f"❌ Error en logout: {e}")
             self.show_message("❌ Error cerrando sesión", is_error=True)
 
-    # Métodos de navegación (placeholders)
+    # Métodos de navegación
     def go_to_themes(self):
         """Ir a configuración de temas"""
         if self.page:

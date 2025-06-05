@@ -1059,9 +1059,9 @@ class InteractiveMomentsScreen:
             user_id = self.current_user['id']
 
             # ✅ Usar el nuevo método para convertir momentos a entrada diaria
-            entry_id = db.save_interactive_moments_as_entry(
+            entry_id = db.create_daily_entry_from_moments(
                 user_id=user_id,
-                reflection="Entrada creada desde Momentos Interactivos",
+                free_reflection="Entrada creada desde Momentos Interactivos",
                 worth_it=len([m for m in self.moments if m.type == "positive"]) > len([m for m in self.moments if m.type == "negative"])
             )
 
